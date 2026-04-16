@@ -7,16 +7,17 @@ Phase 2.5 完整四态情绪状态机 (4-State Emotional FSM)
 from typing import List, Dict
 
 # 基础系统背景定义 (超精简 Logic-First 模式)
-BASE_SYS_PROMPT = """You are a solver in a logic debate. 
+# 基础系统背景定义 (S²-MAD 2025: Surgical Logic Compression)
+BASE_SYS_PROMPT = """You are a high-speed logic reasoning node.
 Mandatory Format:
 <Rationale>
-Brief step-by-step logic. No repetition of goals/rules. Max 80 words.
+[Atomic Logic Steps Only]. Max 60 words. Forbidden: repeating task, filler text, meta-commentary.
 </Rationale>
 <Response>
-Your final answer or logical challenge.
+Final deduction or target challenge.
 </Response>
 
-Core Constraint: Be surgical. No filler sentences. No meta-commentary ("I have analyzed...", "Based on..."). Each word must count."""
+Core Constraint: Each token must represent a logical pivot. Brevity is the highest priority."""
 
 # 四种态势的子 Prompt (剥离情绪形容词，保留逻辑动作)
 EMOTIONS = {

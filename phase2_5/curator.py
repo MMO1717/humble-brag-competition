@@ -29,24 +29,24 @@ def _compute_adaptive_threshold(turn_index: int, response_length: int, d_sem_his
     """
     计算自适应阈值：结合轮次退火、输出长度、历史相似度模式
     """
-    # 1. 轮次退火因子
-    turn_factor = min(turn_index * TURN_ANNEALING_FACTOR, MAX_TURN_FOR_ANNEALING * TURN_ANNEALING_FACTOR)
+    # 1. 轮次退火因子 (随轮次平衡收敛与对抗)
+    turn_factor = min(turn_index * 0.02, 0.08)
 
-    # 2. 长度因子 (针对短回复严苛)
-    length_factor = -0.05 if response_length < 80 else 0.0
+    # 2. 长度因子 (针对短回复严苛，防止对话坍缩)
+    length_factor = -0.04 if response_length < 60 else 0.0
 
-    # 3. 逻辑死锁检测：如果最近两轮相似度波动极小 (<0.01) 且都在 0.7 以上，说明在原地踏步
+    # 3. 逻辑死锁检测 (iMAD 2026 Stability Check)
     stagnation_factor = 0.0
     if d_sem_history and len(d_sem_history) >= 2:
         diff = abs(d_sem_history[-1] - d_sem_history[-2])
-        if diff < 0.01 and d_sem_history[-1] > 0.70:
-            stagnation_factor = -0.05  # 大幅降低阈值，强制触发重置
+        # 如果连续两轮极其接近，说明对话已僵死
+        if diff < 0.005 and d_sem_history[-1] > 0.80:
+            stagnation_factor = -0.06  
 
-    # 综合阈值计算
-    base_threshold = SIMILARITY_THRESHOLD_BASE
+    base_threshold = SIMILARITY_THRESHOLD_BASE # 0.82
     adaptive_threshold = base_threshold + turn_factor + length_factor + stagnation_factor
 
-    return max(0.75, min(0.92, adaptive_threshold))
+    return max(0.78, min(0.94, adaptive_threshold))
 
 async def get_cosine_similarity(client: AsyncOpenAI, text1: str, text2: str) -> float:
     """使用 DashScope 兼容的 Embedding 接口计算余弦相似度"""
