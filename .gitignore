@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables
+.env
+
+# Project specific logs and results
+*.csv
+*.png
+*.md
+!README.md
+!kks_report.md
+# We keep kks_report.md as it's a summary, but maybe user wants it kept.
+# Let's ignore large log files or specific benchmark results if they are repetitive.
+
+# IDEs
+.vscode/
+.idea/

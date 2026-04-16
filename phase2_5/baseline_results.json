@@ -1,0 +1,72 @@
+[
+  {
+    "task_id": 1,
+    "is_correct": true,
+    "tokens": 3702,
+    "reward": 93.49,
+    "elapsed": 53.25180220603943
+  },
+  {
+    "task_id": 2,
+    "is_correct": false,
+    "tokens": 6537,
+    "reward": -20.685000000000002,
+    "elapsed": 96.85924196243286
+  },
+  {
+    "task_id": 3,
+    "is_correct": true,
+    "tokens": 6695,
+    "reward": 78.525,
+    "elapsed": 80.61073875427246
+  },
+  {
+    "task_id": 4,
+    "is_correct": true,
+    "tokens": 7715,
+    "reward": 73.425,
+    "elapsed": 97.31322979927063
+  },
+  {
+    "task_id": 5,
+    "is_correct": true,
+    "tokens": 1924,
+    "reward": 111.089628749859,
+    "elapsed": 21.65476131439209
+  },
+  {
+    "task_id": 6,
+    "is_correct": true,
+    "tokens": 11585,
+    "reward": 77.03040996480084,
+    "elapsed": 198.97561287879944
+  },
+  {
+    "task_id": 7,
+    "is_correct": true,
+    "tokens": 10384,
+    "reward": 71.20639549819947,
+    "elapsed": 139.4813117980957
+  },
+  {
+    "task_id": 8,
+    "is_correct": true,
+    "tokens": 3221,
+    "reward": 95.895,
+    "elapsed": 53.89667296409607
+  },
+  {
+    "task_id": 9,
+    "is_correct": false,
+    "tokens": 5332,
+    "reward": -14.66,
+    "elapsed": 95.62058782577515
+  },
+  {
+    "task_id": 10,
+    "is_correct": true,
+    "tokens": 12878,
+    "reward": 71.27027186246914,
+    "elapsed": 167.62230014801025
+  }
+]

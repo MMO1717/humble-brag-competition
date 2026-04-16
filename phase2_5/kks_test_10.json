@@ -1,0 +1,42 @@
+[
+  {
+    "quiz": "A says \"I am a knight\". What is A?",
+    "solution_text": "If A says \"I am a knight\", then A must be telling the truth. Therefore A is a knight."
+  },
+  {
+    "quiz": "A says \"I am a knave\". B says \"A is a knave\". What are A and B?",
+    "solution_text": "If A says \"I am a knave\", then A is lying because a knave cannot truthfully say they are a knave. So A is a knight. B says \"A is a knave\", which is false, so B is a knave."
+  },
+  {
+    "quiz": "A says \"B is a knight\". B says \"A is a knave\". What are A and B?",
+    "solution_text": "Assume A is a knight. Then B is a knight. But then B says \"A is a knave\" which is false. Contradiction. Assume A is a knave. Then B is not a knight. B says \"A is a knave\" which is true. So B must be a knight. Contradiction. Therefore no solution."
+  },
+  {
+    "quiz": "A says \"I am a spy\". What is A?",
+    "solution_text": "A spy can either tell truth or lie. So A could be telling truth or lying. Therefore A is a spy."
+  },
+  {
+    "quiz": "A says \"B is a knight or I am a knave\". What can we conclude?",
+    "solution_text": "If A is a knight, then statement is true. So either B is a knight or A is a knave. But if A is knight, \"A is a knave\" is false, so B must be knight. If A is knave, statement is false. So \"B is a knight or A is a knave\" is false, meaning B is not a knight and A is not a knave. But A is knave, so \"A is not a knave\" is false. Therefore impossible."
+  },
+  {
+    "quiz": "A says \"Either I am a knight or B is a knave\". B says \"A is a knave\". What are A and B?",
+    "solution_text": "Assume A is knight. Then statement true: either A is knight (true) or B is knave. So statement true regardless of B. B says \"A is knave\" which is false, so B is knave. This is consistent. Assume A is knave. Then statement false: both \"A is knight\" and \"B is knave\" are false. So B is not knave, B is knight. B says \"A is knave\" which is true, so B is knight. This is also consistent. So two solutions: (A knight, B knave) or (A knave, B knight)."
+  },
+  {
+    "quiz": "A says \"If I am a knight then B is a spy\". B says \"A is a knight\". What are A and B?",
+    "solution_text": "Assume A is knight. Then statement true. If A is knight, then \"if A is knight then B is spy\" is true. Since antecedent true, consequent must be true. So B is spy. B says \"A is knight\" which is true, so B tells truth sometimes. This is consistent with spy. Assume A is knave. Then statement false. So \"if A is knight then B is spy\" is false. This only happens when antecedent true and consequent false. But A is not knight, so statement vacuously true. Contradiction. So A cannot be knave. So solution: A knight, B spy."
+  },
+  {
+    "quiz": "There are three people: A, B, and C. A says \"B is a knave\". B says \"C is a knight\". C says \"A is a spy\". What are A, B, and C?",
+    "solution_text": "This is a complex puzzle requiring systematic case analysis. Many possible combinations, need to check consistency."
+  },
+  {
+    "quiz": "A says \"I am not a knight\". What is A?",
+    "solution_text": "If A is knight, then statement \"I am not a knight\" is false, contradiction. If A is knave, then statement \"I am not a knight\" is true, but knave cannot tell truth, contradiction. If A is spy, can tell truth or lie. Statement could be true or false. So A must be spy."
+  },
+  {
+    "quiz": "A says \"B is a knight if and only if I am a knave\". B says \"A is a spy\". What are A and B?",
+    "solution_text": "Let X = \"B is knight\", Y = \"A is knave\". A says X ↔ Y. Case analysis needed."
+  }
+]
