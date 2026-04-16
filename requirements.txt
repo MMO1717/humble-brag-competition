@@ -1,0 +1,13 @@
+langchain
+langchain-anthropic
+langchain-openai
+pydantic
+instructor
+sentence-transformers
+faiss-cpu
+fuzzywuzzy
+python-Levenshtein
+pandas
+openpyxl
+asyncio
+tqdm
