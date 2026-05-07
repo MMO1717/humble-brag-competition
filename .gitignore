@@ -16,13 +16,10 @@ Thumbs.db
 .env
 
 # Project specific logs and results
-*.csv
-*.png
-*.md
-!README.md
-!kks_report.md
-# We keep kks_report.md as it's a summary, but maybe user wants it kept.
-# Let's ignore large log files or specific benchmark results if they are repetitive.
+*.log
+results/
+teacher_visual_pack*/
+.claude/
 
 # IDEs
 .vscode/
