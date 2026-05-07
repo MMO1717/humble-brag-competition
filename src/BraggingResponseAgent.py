@@ -16,7 +16,7 @@ from typing import Optional
 from openai import OpenAI, AsyncOpenAI
 from dotenv import load_dotenv
 
-from .system import build_system_prompt, build_user_prompt, VALID_STRATEGIES, MECHANISM_BLACKLIST
+from .system import build_system_prompt, build_user_prompt, VALID_STRATEGIES, VALID_MECHANISMS, MECHANISM_BLACKLIST
 
 load_dotenv()
 
@@ -71,11 +71,17 @@ def _extract_json(raw: str) -> dict:
 
 
 def _validate_output(data: dict) -> None:
-    """校验字段合法性，并对策略名进行标准化。"""
+    """校验字段合法性，并对策略名和机制名进行标准化。"""
     required = ["bragging_mechanism", "speaker_intention", "desired_feedback", "risk_assessment", "response_strategy", "response_text"]
     for field in required:
         if field not in data or not data[field]:
             raise ValueError(f"缺少必填字段: {field}")
+
+    # 移除多余字段，只保留官方要求的6个（episode_id 由外部注入）
+    allowed_keys = set(required)
+    extra_keys = set(data.keys()) - allowed_keys
+    for k in extra_keys:
+        del data[k]
 
     # 标准化策略名：转小写，下划线统一
     raw_strategy = data["response_strategy"]
@@ -85,15 +91,13 @@ def _validate_output(data: dict) -> None:
     else:
         raise ValueError(f"非法策略名: {raw_strategy}，合法值: {sorted(VALID_STRATEGIES)}")
 
-    # bragging_mechanism 是自然语言描述，用黑名单检测是否输出了旧枚举标签
-    mechanism_val = data["bragging_mechanism"]
-    if mechanism_val.strip() in MECHANISM_BLACKLIST:
-        raise ValueError(
-            f"bragging_mechanism 输出了枚举标签 '{mechanism_val}'，"
-            "请改为自然语言描述（如：用疲惫感做软着陆，将频繁飞欧洲开会这个炫耀点柔和包装）。"
-        )
-    if len(mechanism_val.strip()) < 10:
-        raise ValueError(f"bragging_mechanism 描述过短（少于10字）: '{mechanism_val}'")
+    # bragging_mechanism 必须是 v6 官方枚举之一
+    raw_mechanism = data["bragging_mechanism"]
+    norm_mechanism = str(raw_mechanism).lower().replace("-", "_").replace(" ", "_").strip()
+    if norm_mechanism in VALID_MECHANISMS:
+        data["bragging_mechanism"] = norm_mechanism
+    else:
+        raise ValueError(f"非法 bragging_mechanism: {raw_mechanism}，合法值: {sorted(VALID_MECHANISMS)}")
 
 
 # ── Agent 主体 ────────────────────────────────────────────────────────────────

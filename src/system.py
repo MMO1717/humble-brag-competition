@@ -24,15 +24,20 @@ VALID_STRATEGIES = {
     "no_response",
 }
 
-# bragging_mechanism 现在是自然语言描述（不再是枚举）。
-# 以下黑名单用于检测模型是否仍输出了旧枚举标签，若命中则触发重试。
-MECHANISM_BLACKLIST = {
-    "Humble_Brag", "Understated_Flex", "Burden_of_Excess",
-    "Reluctant_Reveal", "Comparative_Drop", "Proxy_Validation",
-    "The Humble Brag", "The Professional Showcase",
-    "The Understated Flex", "The Enthusiastic Share",
-    "Soft_Landing", "Gravitational_Field", "Information_Leakage",
+# BRAG-Agent v6 官方 bragging_mechanism 枚举（8种）
+VALID_MECHANISMS = {
+    "humble_complaint",
+    "faux_modesty",
+    "achievement_drop",
+    "comparison_superiority",
+    "scarcity_flex",
+    "understated_flex",
+    "self_aware_brag",
+    "other",
 }
+
+# 已废弃：旧版自然语言描述黑名单，保留仅作向后兼容参考
+MECHANISM_BLACKLIST: set[str] = set()
 
 
 def build_system_prompt() -> str:
