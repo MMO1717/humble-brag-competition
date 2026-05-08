@@ -5,10 +5,10 @@ echo "=== BRAG-Agent v6 Test Submission ==="
 echo ""
 
 echo "[1/2] Running test submission..."
-python run_official.py \
+python run_multi_agent_official.py \
   --input BRAG-Agent-public/data/test_input.jsonl \
   --output outputs/test_submission.jsonl \
-  --concurrency 20
+  --concurrency 3
 
 echo ""
 echo "[2/2] Running format checker..."
