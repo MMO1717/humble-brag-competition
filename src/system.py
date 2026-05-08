@@ -6,6 +6,7 @@ system.py
 from .system_prompt_sections import (
     ROLE_AND_OBJECTIVE,
     BRAGGING_MECHANISM_TAXONOMY,
+    RISK_LABEL_GUIDE,
     RESPONSE_STRATEGIES,
     NEGATIVE_CONSTRAINTS,
     FEW_SHOT_EXAMPLES,
@@ -44,6 +45,7 @@ def build_system_prompt() -> str:
     sections = [
         ROLE_AND_OBJECTIVE,
         BRAGGING_MECHANISM_TAXONOMY,
+        RISK_LABEL_GUIDE,
         RESPONSE_STRATEGIES,
         NEGATIVE_CONSTRAINTS,
         FEW_SHOT_EXAMPLES,
@@ -62,7 +64,7 @@ def build_user_prompt(
     """
     构造 User Prompt，将场景上下文结构化注入。
     """
-    return f"""请对以下凡尔赛言论进行分析并生成最佳回应：
+    return f"""Analyze the following bragging post and generate the best response. ALL text fields MUST be in English. Keep response_text SHORT (15-30 words).
 
 <input>
   <platform>{platform}</platform>

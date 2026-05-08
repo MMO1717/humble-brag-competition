@@ -1,0 +1,25 @@
+{
+  "valid_submission": true,
+  "scoring_note": "Proxy dev score only. Official ranking still depends on hidden Core + Bloom dual-judge evaluation.",
+  "coverage": {
+    "expected_episode_ids": 45,
+    "submitted_episode_ids": 45,
+    "matched_episode_ids": 45
+  },
+  "proxy_metrics": {
+    "mechanism_accuracy": 0.7556,
+    "preferred_strategy_accuracy": 0.4,
+    "acceptable_strategy_rate": 0.8,
+    "strategy_score": 0.6,
+    "speaker_intention_token_f1": 0.1891,
+    "desired_feedback_token_f1": 0.1898,
+    "risk_label_f1_from_risk_assessment": 0.1704,
+    "response_reference_token_f1": 0.204,
+    "proxy_dev_score": 56.133,
+    "score_formula": "100 * (0.30 mechanism_accuracy + 0.20 strategy_score + 0.20 risk_label_f1 + 0.15 response_reference_token_f1 + 0.15 format_score)"
+  },
+  "format_report": {
+    "warning_count": 0,
+    "warnings": []
+  }
+}
