@@ -1,0 +1,4 @@
+outputs/*
+!outputs/outputs说明.md
+.env
+__pycache__
