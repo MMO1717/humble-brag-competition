@@ -1,0 +1,7 @@
+outputs/*
+!outputs/outputs说明.md
+.env
+__pycache__/
+**/__pycache__/
+*.py[cod]
+BRAG-Agent-public/

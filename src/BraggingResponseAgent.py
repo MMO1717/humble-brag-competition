@@ -102,7 +102,7 @@ class BraggingResponseAgent:
     """凡尔赛回应 Agent，支持并发调用。"""
 
     MAX_RETRIES = 2
-    DEFAULT_MODEL = "qwen-turbo"
+    DEFAULT_MODEL = "qwen3.6-27b"
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, model: Optional[str] = None):
         api_key = api_key or os.getenv("DASHSCOPE_API_KEY")
