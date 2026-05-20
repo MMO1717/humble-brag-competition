@@ -11,6 +11,8 @@
 - 旧 BRAG-Pipeline 实验工程已整理到 `reference/`
 - `reference/` 只作为参考归档，不作为后续主线开发目录
 - 根目录现有 `schema.py`、`rag.py` 是早期 Meta-String RAG 原型，需要按比赛真实输入/输出协议重构
+- Phase 0 数据契约审计已完成，详见 `PROJECT_CONTRACT_AUDIT.md`
+- Phase 1 最小 heuristic baseline 已跑通，可通过 `python3 main.py --mode dev` 生成并评测
 
 ## 目录说明
 
@@ -20,6 +22,14 @@
 │   └── Bragging_data.json
 ├── reference/
 │   └── old BRAG-Pipeline archive
+├── humble_brag/
+│   └── baseline pipeline package
+├── scripts/
+│   ├── format_checker.py
+│   └── evaluate_dev.py
+├── outputs/
+│   └── ignored run artifacts
+├── main.py
 ├── rag.py
 ├── schema.py
 ├── requirements.txt
@@ -51,6 +61,16 @@ load data
 -> run official format/eval checks
 -> save run report
 ```
+
+当前最小 baseline 已实现，运行方式：
+
+```bash
+python3 main.py --mode dev --max-items 3
+python3 main.py --mode dev
+python3 main.py --mode test --max-items 3
+```
+
+每次运行会在 `outputs/` 下生成唯一目录，包含 `submission.jsonl`、`input_subset.jsonl`、`run_manifest.json`、`format_report.json`、`RES.md`，dev 模式还会包含 `dev_eval_report.json`。
 
 之后再加入：
 

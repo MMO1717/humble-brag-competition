@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.venv/
+outputs/
+faiss_index.index
+faiss_index.metadata

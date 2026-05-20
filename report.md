@@ -72,6 +72,39 @@ ef2823b Add reference pipeline archive
 - 明确了当前 `Bragging_data.json` 与官方 `dev_input.jsonl` 不匹配的现状与数据读取策略。
 - 规划了后续评测脚本提升方案与 Phase 1 baseline 最小实现建议。
 
+### 2.5 Phase 1 最小 Baseline 已跑通
+
+已新增：
+
+```text
+main.py
+humble_brag/
+scripts/format_checker.py
+scripts/evaluate_dev.py
+```
+
+当前 baseline 是纯本地 heuristic pipeline，不依赖外部 API 或 LLM。
+
+已验证运行：
+
+| 运行 | 输出目录 | 格式检查 | 代理分数 |
+| --- | --- | --- | --- |
+| dev 3 条 smoke | `outputs/dev__20260521_004330_043__heuristic_baseline__max3` | valid, 0 warning | 49.565 |
+| dev full 45 条 | `outputs/dev__20260521_004340_237__heuristic_baseline__full` | valid, 0 warning | 49.223 |
+| test 3 条 smoke | `outputs/test__20260521_004154_200__heuristic_baseline__max3` | valid, 0 warning | not run |
+
+full dev 指标：
+
+| 指标 | 数值 |
+| --- | --- |
+| proxy_dev_score | 49.223 |
+| mechanism_accuracy | 0.2667 |
+| strategy_score | 0.6333 |
+| risk_label_f1 | 0.5785 |
+| response_reference_token_f1 | 0.1324 |
+
+结论：Phase 1 的目标是跑通合法闭环，不追求高分。当前 baseline 已满足“可读取、可生成、可检查、可评分、可保存报告”的基础要求。
+
 ## 3. 现有代码状态
 
 根目录现有代码主要是早期 Meta-String RAG 原型：
@@ -109,22 +142,20 @@ ef2823b Add reference pipeline archive
 
 ## 5. 下一步重点
 
-Phase 0 盘点已经完成，下一步工作重心是 Phase 1 最小可运行 Baseline 的搭建：
+Phase 0 和 Phase 1 已完成。下一步工作重心是 Phase 2 Debug Trace 和 Phase 3 SkillFlow：
 
-1. 将官方评测脚本 `format_checker.py` 和 `evaluate_dev.py` 复制到根目录的 `scripts/` 目录下。
-2. 实现数据加载器，以 `.jsonl` 格式读取官方输入数据。
-3. 搭建最简 baseline 推理流程。
-4. 实现格式拦截与后处理模块，对字数限制（如 `speaker_intention` <= 80 词等）、禁用模式、策略/回复一致性（如 `no_response` 限制）进行硬拦截与处理。
-5. 自动输出 `submission.jsonl` 并调用本地脚本完成格式校验与评估，自动保存运行报告与 `RES.md`。
-
-完成上述内容后，再考虑移植 SkillFlow、few-shot、debug trace 和 memory。
+1. 为每条样本保存 trace，记录机制、策略、风险、回复和后处理动作。
+2. 把 heuristic baseline 拆成可替换的 SkillFlow 接口。
+3. 用同一套评测命令比较 baseline 与 SkillFlow。
+4. 再考虑 few-shot / Meta-String retrieval。
 
 ## 6. 风险
 
-- 当前 `data/Bragging_data.json` 与官方旧项目里的 JSONL 数据格式可能不同，需要先做字段盘点。
+- 当前 `data/Bragging_data.json` 与官方 JSONL 输入格式已确认不一致，不能直接作为 submission 输入。
 - 如果先上复杂 RAG/memory，容易在 schema 未稳定时返工。
 - 3 条 smoke score 或小样本 ablation 只能说明链路可跑，不能证明 hidden test 泛化。
 - `reference/` 是归档，不应该被当作主线代码直接执行。
+- 当前 baseline 只是低成本工程基线，proxy score 不高是预期结果。
 
 ## 7. 当前推荐结论
 
@@ -139,4 +170,4 @@ official contract first
 -> final freeze
 ```
 
-先把大题框架搭好，再按阶段完善。
+当前已经完成前两步，下一步应补 trace 和 SkillFlow。

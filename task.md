@@ -29,31 +29,40 @@
 - [x] 能说明当前数据与官方 JSONL 数据是否一致。
 - [x] 后续 pipeline 不再依赖猜测字段。
 
-## Phase 1：最小可运行 Baseline (进行中 [/])
+## Phase 1：最小可运行 Baseline (已完成 - 2026-05-21)
 
 目标：先跑通完整链路，不追求高分。
 
 任务：
 
-1. 实现数据加载器。
-2. 实现最小 baseline 生成器。
-3. 实现输出 JSONL 写入。
-4. 实现 schema validator。
-5. 接入 format checker。
-6. dev 模式下接入 evaluator。
+- [x] 1. 实现数据加载器。
+- [x] 2. 实现最小 baseline 生成器。
+- [x] 3. 实现输出 JSONL 写入。
+- [x] 4. 实现 schema validator / postprocess。
+- [x] 5. 接入 format checker。
+- [x] 6. dev 模式下接入 evaluator。
 
 验收标准：
 
-- 可以生成 `submission.jsonl`。
-- 格式检查 0 error。
-- 每次运行保存：
+- [x] 可以生成 `submission.jsonl`。
+- [x] 格式检查 0 error。
+- [x] 每次运行保存：
   - `submission.jsonl`
+  - `input_subset.jsonl`
   - `run_manifest.json`
   - `format_report.json`
   - `dev_eval_report.json`，如果有 gold
   - `RES.md`
 
-## Phase 2：可调试日志
+完成记录：
+
+| 运行 | 输出目录 | 格式检查 | 代理分数 |
+| --- | --- | --- | --- |
+| dev 3 条 smoke | `outputs/dev__20260521_004330_043__heuristic_baseline__max3` | valid, 0 warning | 49.565 |
+| dev full 45 条 | `outputs/dev__20260521_004340_237__heuristic_baseline__full` | valid, 0 warning | 49.223 |
+| test 3 条 smoke | `outputs/test__20260521_004154_200__heuristic_baseline__max3` | valid, 0 warning | not run |
+
+## Phase 2：可调试日志 (下一步)
 
 目标：让每条样本为什么这样输出可以追踪。
 
@@ -126,11 +135,11 @@ mechanism
 
 ## 当前下一步
 
-现在最应该做的是 Phase 0 和 Phase 1：
+现在最应该做的是 Phase 2 和 Phase 3：
 
 ```text
-先盘点数据和官方契约
-再做最小 baseline
+先补 per-sample trace
+再把 baseline 拆成 SkillFlow
 ```
 
-暂时不要直接实现复杂 RAG、memory 或自反思回滚。那些模块应该在基础链路可跑、可评、可回滚之后再加。
+暂时不要直接实现复杂 RAG、memory 或自反思回滚。那些模块应该在 trace 和 SkillFlow 可比较之后再加。
