@@ -1,97 +1,135 @@
-# Social Savvy Agent 项目报告
+# Humble Brag Competition 项目状态报告
 
-## 项目概述
-本项目是一个基于检索增强生成（RAG）技术的智能社交助手系统，专门设计用于理解和响应各种社交媒体平台上的内容。该系统通过分析用户的社会关系、平台特性、互动目标等因素，提供情境感知的社交回应。
+更新时间：2026-05-21
 
-## 完成的工作内容
+## 1. 当前判断
 
-### 1. 项目结构搭建
-- 创建了完整的项目目录结构：
-  - `social_savvy_agent/` 主目录
-  - `data/`, `schema/`, `utils/`, `core/` 子目录
-  - 配置了所需的依赖文件和文档
+这个仓库应作为新的正式主线使用。旧的 `/Users/mm/Desktop/BRAG-Pipeline-main` 工程已经做过不少实验，但目录边界和 git 状态不够干净，不适合继续作为主战场。
 
-### 2. 依赖管理
-- 创建了 `requirements.txt` 文件，包含了所有必需的Python库：
-  - `langchain` 及其相关模块（`langchain-anthropic`, `langchain-openai`）
-  - `pydantic` 和 `instructor` 用于数据验证和结构化
-  - `sentence-transformers` 和 `faiss-cpu` 用于向量化和相似性搜索
-  - `fuzzywuzzy` 和 `python-Levenshtein` 用于模糊匹配
-  - `pandas`, `openpyxl` 用于数据处理
-  - `asyncio`, `tqdm` 用于异步操作和进度显示
+当前策略是：
 
-### 3. 数据模型设计（schema.py）
-实现了完整的数据架构，包含8个核心枚举类型：
+```text
+新仓库搭主框架 -> 旧项目做 reference -> 逐步移植有效模块 -> 每步验证
+```
 
-#### 平台枚举（PlatformEnum）
-- 支持主流社交平台：微信朋友圈、微博、小红书、抖音、快手、LinkedIn、Twitter、Facebook、Instagram
+这比继续在旧目录上叠加功能更稳，也更方便提交、回滚和向 GitHub 同步。
 
-#### 关系枚举（RelationshipEnum）
-- 定义了多种社会关系：家人、好友、同事、老板、下属、客户、合作伙伴等
+## 2. 已完成事项
 
-#### 代理角色枚举（AgentRoleEnum）
-- 定义了AI代理在不同关系中的角色：家庭成员、朋友、同事、老板、导师等
+### 2.1 新仓库已拉取
 
-#### 互动目标枚举（InteractionGoalEnum）
-- 定义了互动的目标：友好回应、情感支持、信息分享、推广、关系建立等
+已从以下远端拉取：
 
-#### 帖子类型枚举（PostTypeEnum）
-- 分类了不同类型的帖子：状态更新、成就分享、抱怨、提问、寻求建议等
+```text
+https://github.com/MMO1717/humble-brag-competition.git
+```
 
-#### 核心模型类
-- `SocialContext`: 整合所有社交信息的主模型
-- `ResponseStrategy`: 定义回应策略的模型
+当前本地路径：
 
-### 4. RAG系统实现（rag.py）
-构建了基于Meta-String的检索增强生成系统：
+```text
+/Users/mm/Desktop/BRAG-Pipeline-main/humble-brag-competition
+```
 
-#### Meta-String格式
-- 设计了统一的数据表示格式：`[Platform: 微信朋友圈] [Relationship: 好友] [Agent_Role: 普通朋友] [Interaction_Goal: 友好回应] [Post: "今天跑了三个客户，好累呀"]`
+当前分支：
 
-#### 核心功能
-- 使用Sentence Transformers进行文本嵌入
-- 使用FAISS进行高效的相似性搜索
-- 实现了索引的构建、保存、加载和动态更新
-- 提供了灵活的搜索接口
+```text
+new
+```
 
-### 5. 示例数据和测试
-- 创建了多样化的示例数据集，涵盖不同的社交场景
-- 实现了完整的测试流程，验证系统的检索能力
-- 提供了保存和加载索引的功能
+### 2.2 旧项目已归档为 reference
 
-## 技术特点
+旧 BRAG-Pipeline 实验工程已经整理到：
 
-### 情境感知
-系统能够根据不同的社交情境（平台、关系、角色、目标）调整回应策略，提供更加自然和合适的互动。
+```text
+reference/
+```
 
-### 可扩展性
-- 模块化的设计允许轻松添加新的社交平台、关系类型或互动目标
-- 支持动态添加新的社交上下文而无需重建整个索引
+归档时排除了：
 
-### 高效检索
-- 使用FAISS进行快速相似性搜索
-- 基于向量嵌入的语义匹配，而非简单的关键词匹配
+- `.env`
+- `.git`
+- `.venv`
+- `outputs`
+- `__pycache__`
+- `.DS_Store`
 
-## 应用场景
+这样可以保留旧代码、旧文档和官方评测脚本副本，同时避免把本地密钥、虚拟环境和大量实验输出上传到 GitHub。
 
-### 社交媒体助手
-- 自动回应朋友圈、微博等平台的内容
-- 根据关系亲疏调整回应的语气和内容
+### 2.3 已推送到 GitHub
 
-### 客户关系管理
-- 智能处理客户在不同平台的互动
-- 保持一致且个性化的客户服务体验
+`reference/` 已提交并推送到远端 `new` 分支。
 
-### 个人品牌管理
-- 协助维护个人在多个社交平台的形象
-- 确保回应风格与设定的角色一致
+最近一次 reference 归档提交：
 
-## 总结
+```text
+ef2823b Add reference pipeline archive
+```
 
-本项目成功构建了一个功能完备的智能社交助手系统，具备了：
-1. 完整的数据模型和分类体系
-2. 高效的检索增强生成能力
-3. 灵活的配置选项
-4. 可扩展的架构设计
+## 3. 现有代码状态
 
-该系统为后续的AI社交互动应用提供了坚实的基础架构。
+根目录现有代码主要是早期 Meta-String RAG 原型：
+
+- `schema.py`：定义通用社交平台、关系、角色、互动目标等枚举和 `SocialContext`
+- `rag.py`：基于 Meta-String + FAISS 的检索原型
+- `data/Bragging_data.json`：当前数据文件
+
+这些代码有参考价值，但还不是最终比赛 pipeline。主要问题：
+
+1. schema 还偏通用社交助手，不完全对齐 BRAG 官方 7 字段输出。
+2. RAG 原型没有接入完整生成、校验、评测、输出链路。
+3. 当前文档中过去关于高分目标的表述需要降级为工程假设，不能当作已验证结论。
+4. 需要先建立官方格式检查和 dev 评分闭环，再做复杂增强。
+
+## 4. reference 中可复用内容
+
+旧项目中较有价值的部分：
+
+| 模块 | 可复用方式 |
+| --- | --- |
+| `reference/src/skillflow.py` | 后续可参考固定 SkillFlow 调度方式 |
+| `reference/src/skills/` | 可参考机制、风险、策略、回复拆分 |
+| `reference/src/llm_client.py` | 可参考 Ollama qwen 原生 `/api/chat` 适配 |
+| `reference/src/postprocess.py` | 可参考输出清理和标签归一化 |
+| `reference/BRAG-Agent-public/scripts/` | 可直接作为官方格式检查和 dev 评分来源 |
+| `reference/PROJECT_OVERVIEW_REPORT.md` | 可查看旧实验指标和阶段记录 |
+
+不建议直接搬运的部分：
+
+- 旧目录里的整体工程结构
+- 旧实验输出
+- 没有完整 ablation 的 memory 规则
+- 过度乐观的分数目标和未验证策略
+
+## 5. 下一步重点
+
+优先完成基础框架，而不是直接做 RAG、memory 或复杂 agent：
+
+1. 明确当前数据文件字段，写成输入 schema。
+2. 明确最终提交需要的输出 schema。
+3. 接入或复制官方 format checker / dev evaluator。
+4. 实现最小 baseline pipeline。
+5. 每次运行保存 `submission.jsonl`、`RES.md`、`run_manifest.json` 和评测报告。
+
+完成上述内容后，再考虑移植 SkillFlow、few-shot、debug trace 和 memory。
+
+## 6. 风险
+
+- 当前 `data/Bragging_data.json` 与官方旧项目里的 JSONL 数据格式可能不同，需要先做字段盘点。
+- 如果先上复杂 RAG/memory，容易在 schema 未稳定时返工。
+- 3 条 smoke score 或小样本 ablation 只能说明链路可跑，不能证明 hidden test 泛化。
+- `reference/` 是归档，不应该被当作主线代码直接执行。
+
+## 7. 当前推荐结论
+
+继续在当前新仓库做，但开发顺序必须是：
+
+```text
+official contract first
+-> runnable baseline
+-> trace and reports
+-> SkillFlow
+-> retrieval / memory
+-> final freeze
+```
+
+先把大题框架搭好，再按阶段完善。
