@@ -1,0 +1,14 @@
+outputs/*
+!outputs/outputs说明.md
+.env
+__pycache__
+
+# 只提交 Agent Memory 框架，不提交本地实验产生的具体记忆内容。
+agent_memory/active/*
+!agent_memory/active/.gitkeep
+agent_memory/candidate/*
+!agent_memory/candidate/.gitkeep
+agent_memory/deprecated/*
+!agent_memory/deprecated/.gitkeep
+agent_memory/eval/*
+!agent_memory/eval/.gitkeep
