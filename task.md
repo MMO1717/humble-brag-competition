@@ -12,24 +12,24 @@
 - 有可比较的 baseline
 - 实验结论写回文档
 
-## Phase 0：仓库和数据盘点
+## Phase 0：仓库和数据盘点 (已完成 - 2026-05-21)
 
 目标：确认当前仓库真实输入、输出和评测契约。
 
 任务：
 
-1. 读取 `data/Bragging_data.json`，整理字段列表、样本数量和示例。
-2. 从 `reference/BRAG-Agent-public/` 中确认官方输入字段、输出 7 字段、合法标签和评测脚本调用方式。
-3. 写出本仓库专用的输入 schema 和输出 schema 说明。
-4. 确认是否需要把官方 `format_checker.py`、`evaluate_dev.py` 提升到根目录脚本区。
+- [x] 1. 读取 `data/Bragging_data.json`，整理字段列表、样本数量和示例。
+- [x] 2. 从 `reference/BRAG-Agent-public/` 中确认官方输入字段、输出 7 字段、合法标签和评测脚本调用方式。
+- [x] 3. 写出本仓库专用的输入 schema 和输出 schema 说明（写入 `PROJECT_CONTRACT_AUDIT.md`）。
+- [x] 4. 确认是否需要把官方 `format_checker.py`、`evaluate_dev.py` 提升到根目录脚本区。
 
 验收标准：
 
-- 文档中列出输入字段和输出字段。
-- 能说明当前数据与官方 JSONL 数据是否一致。
-- 后续 pipeline 不再依赖猜测字段。
+- [x] 文档中列出输入字段和输出字段。
+- [x] 能说明当前数据与官方 JSONL 数据是否一致。
+- [x] 后续 pipeline 不再依赖猜测字段。
 
-## Phase 1：最小可运行 Baseline
+## Phase 1：最小可运行 Baseline (进行中 [/])
 
 目标：先跑通完整链路，不追求高分。
 

@@ -65,6 +65,13 @@ reference/
 ef2823b Add reference pipeline archive
 ```
 
+### 2.4 Phase 0 数据契约审计完成
+
+已对 `data/Bragging_data.json` 和官方评测规范、文件及脚本进行完整审计。产出审计文档 [PROJECT_CONTRACT_AUDIT.md](file:///Users/mm/Desktop/BRAG-Pipeline-main/humble-brag-competition/PROJECT_CONTRACT_AUDIT.md) 并更新至 README.md 相关文档列表。
+- 确认了当前数据字段、官方输入/输出 7 字段、合法标签和字数、模式等约束。
+- 明确了当前 `Bragging_data.json` 与官方 `dev_input.jsonl` 不匹配的现状与数据读取策略。
+- 规划了后续评测脚本提升方案与 Phase 1 baseline 最小实现建议。
+
 ## 3. 现有代码状态
 
 根目录现有代码主要是早期 Meta-String RAG 原型：
@@ -102,13 +109,13 @@ ef2823b Add reference pipeline archive
 
 ## 5. 下一步重点
 
-优先完成基础框架，而不是直接做 RAG、memory 或复杂 agent：
+Phase 0 盘点已经完成，下一步工作重心是 Phase 1 最小可运行 Baseline 的搭建：
 
-1. 明确当前数据文件字段，写成输入 schema。
-2. 明确最终提交需要的输出 schema。
-3. 接入或复制官方 format checker / dev evaluator。
-4. 实现最小 baseline pipeline。
-5. 每次运行保存 `submission.jsonl`、`RES.md`、`run_manifest.json` 和评测报告。
+1. 将官方评测脚本 `format_checker.py` 和 `evaluate_dev.py` 复制到根目录的 `scripts/` 目录下。
+2. 实现数据加载器，以 `.jsonl` 格式读取官方输入数据。
+3. 搭建最简 baseline 推理流程。
+4. 实现格式拦截与后处理模块，对字数限制（如 `speaker_intention` <= 80 词等）、禁用模式、策略/回复一致性（如 `no_response` 限制）进行硬拦截与处理。
+5. 自动输出 `submission.jsonl` 并调用本地脚本完成格式校验与评估，自动保存运行报告与 `RES.md`。
 
 完成上述内容后，再考虑移植 SkillFlow、few-shot、debug trace 和 memory。
 

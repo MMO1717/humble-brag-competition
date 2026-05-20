@@ -63,7 +63,8 @@ load data
 
 ## 相关文档
 
-- `report.md`：当前项目状态、旧实验归档说明、下一步判断
-- `task.md`：分阶段任务清单和验收标准
-- `reference/PROJECT_OVERVIEW_REPORT.md`：旧 BRAG-Pipeline 实验纵览
-- `reference/CURRENT_AGENT_CHANGELOG.md`：旧实验变更记录
+- [PROJECT_CONTRACT_AUDIT.md](file:///Users/mm/Desktop/BRAG-Pipeline-main/humble-brag-competition/PROJECT_CONTRACT_AUDIT.md)：Phase 0 项目输入/输出契约与数据审计报告
+- [report.md](file:///Users/mm/Desktop/BRAG-Pipeline-main/humble-brag-competition/report.md)：当前项目状态、旧实验归档说明、下一步判断
+- [task.md](file:///Users/mm/Desktop/BRAG-Pipeline-main/humble-brag-competition/task.md)：分阶段任务清单和验收标准
+- [PROJECT_OVERVIEW_REPORT.md](file:///Users/mm/Desktop/BRAG-Pipeline-main/humble-brag-competition/reference/PROJECT_OVERVIEW_REPORT.md)：旧 BRAG-Pipeline 实验纵览
+- [CURRENT_AGENT_CHANGELOG.md](file:///Users/mm/Desktop/BRAG-Pipeline-main/humble-brag-competition/reference/CURRENT_AGENT_CHANGELOG.md)：旧实验变更记录
