@@ -120,6 +120,8 @@ def run_pipeline(
     prompt_version: str = "llm_a_minimal_v1",
     strategy_rules: str = "none",
     use_skillflow: bool = False,
+    use_fewshot: bool = False,
+    fewshot_k: int = 3,
 ) -> Path:
     if backend == "llm" and not use_skillflow and prompt_version not in SUPPORTED_PROMPT_VERSIONS:
         supported = ", ".join(sorted(SUPPORTED_PROMPT_VERSIONS))
@@ -152,6 +154,19 @@ def run_pipeline(
         llm_client = LLMClient()
         model_name_for_slug = llm_client.model
 
+    # Few-shot 初始化
+    fewshot_retriever = None
+    if use_fewshot and backend == "llm":
+        from .fewshot import build_fewshot_retriever
+        train_path = PUBLIC_DATA_DIR / "train.jsonl"
+        fewshot_retriever = build_fewshot_retriever(
+            use_fewshot=True,
+            train_path=train_path,
+            k=fewshot_k,
+            min_score=0.0,
+            include_fields=True,
+        )
+
     # SkillFlow 初始化
     skillflow = None
     skillflow_context = {}
@@ -164,6 +179,7 @@ def run_pipeline(
             "max_tokens": 256,
             "wiki": {},
             "debug_skill_trace": True,
+            "fewshot_retriever": fewshot_retriever,
         }
 
     for row in rows:
@@ -414,6 +430,8 @@ def run_pipeline(
         "prompt_version": active_prompt_version,
         "memory_version": active_memory_version,
         "use_skillflow": use_skillflow,
+        "use_fewshot": use_fewshot,
+        "fewshot_k": fewshot_k if use_fewshot else 0,
         "strategy_rules": strategy_rules,
         "strategy_rule_applied_count": strategy_rule_applied_count,
         "skillflow_fallback_count": skillflow_fallback_count,
@@ -466,6 +484,18 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Use SkillFlow multi-step pipeline instead of single-prompt LLM."
     )
+    parser.add_argument(
+        "--use-fewshot",
+        action="store_true",
+        default=False,
+        help="Enable few-shot retrieval from train.jsonl."
+    )
+    parser.add_argument(
+        "--fewshot-k",
+        type=int,
+        default=3,
+        help="Number of few-shot examples to retrieve (default: 3)."
+    )
     return parser.parse_args()
 
 
@@ -479,6 +509,8 @@ def main() -> None:
         prompt_version=args.prompt_version,
         strategy_rules=args.strategy_rules,
         use_skillflow=args.use_skillflow,
+        use_fewshot=args.use_fewshot,
+        fewshot_k=args.fewshot_k,
     )
     print(run_dir)
 
