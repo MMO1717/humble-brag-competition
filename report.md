@@ -72,38 +72,193 @@ ef2823b Add reference pipeline archive
 - 明确了当前 `Bragging_data.json` 与官方 `dev_input.jsonl` 不匹配的现状与数据读取策略。
 - 规划了后续评测脚本提升方案与 Phase 1 baseline 最小实现建议。
 
-### 2.5 Phase 1 最小 Baseline 已跑通
+### 2.5 Phase 1 & 2 最小 Pipeline 与调试日志已跑通
 
-已新增：
+已新增/重构：
 
 ```text
-main.py
-humble_brag/
+main.py (支持 --backend heuristic|llm 选择)
+humble_brag/llm_client.py (集成 OpenAI SDK 与 urllib 兼容降级，支持本地 Ollama 自动探测)
+humble_brag/prompts.py (极简 zero-shot Prompt 'llm_a_minimal_v1')
+humble_brag/json_repair.py (JSON 提取与格式修复容错)
+humble_brag/runner.py (新增 LLM 运行支路、异常保底 fallback 逻辑与 trace 日志生成)
 scripts/format_checker.py
 scripts/evaluate_dev.py
 ```
 
-当前 baseline 是纯本地 heuristic pipeline，不依赖外部 API 或 LLM。
-
 已验证运行：
 
-| 运行 | 输出目录 | 格式检查 | 代理分数 |
-| --- | --- | --- | --- |
-| dev 3 条 smoke | `outputs/dev__20260521_004330_043__heuristic_baseline__max3` | valid, 0 warning | 49.565 |
-| dev full 45 条 | `outputs/dev__20260521_004340_237__heuristic_baseline__full` | valid, 0 warning | 49.223 |
-| test 3 条 smoke | `outputs/test__20260521_004154_200__heuristic_baseline__max3` | valid, 0 warning | not run |
+| 运行后端 | 运行模式 | 输出目录 | 格式检查 | 代理分数 | Fallback 率 | 备注 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Heuristic | dev 3 条 | `outputs/dev__20260521_085839_388__heuristic_baseline__max3` | valid, 0 error | 49.565 | 0.0% (0/3) | 启发式纯规则基准 |
+| LLM (glm4:9b) | dev 3 条 | `outputs/dev__20260521_085904_879__llm_glm4_9b__max3` | valid, 0 error | 17.033 | 0.0% (0/3) | 0 故障，首次连通 LLM |
+| LLM (glm4:9b) | dev 10 条 | `outputs/dev__20260521_090014_396__llm_glm4_9b__max10` | valid, 0 error | 29.116 | 0.0% (0/10) | 0 故障，逻辑与字段完全正常 |
+| LLM (glm4:9b) | test 3 条 | `outputs/test__20260521_090039_047__llm_glm4_9b__max3` | valid, 0 error | not run | 0.0% (0/3) | 测试模式输出格式正确 |
+| LLM (glm4:9b) | dev full 45 条 | `outputs/dev__20260521_090526_358__llm_glm4_9b__full` | valid, 0 error | 35.983 | 0.0% (0/45) | 核心闭环全量通过，无一例 fallback |
 
-full dev 指标：
+full dev (LLM) 指标：
 
 | 指标 | 数值 |
 | --- | --- |
-| proxy_dev_score | 49.223 |
+| proxy_dev_score | 35.983 |
 | mechanism_accuracy | 0.2667 |
-| strategy_score | 0.6333 |
-| risk_label_f1 | 0.5785 |
-| response_reference_token_f1 | 0.1324 |
+| strategy_score | 0.4444 |
+| risk_label_f1 | 0.0481 |
+| response_reference_token_f1 | 0.2087 |
 
-结论：Phase 1 的目标是跑通合法闭环，不追求高分。当前 baseline 已满足“可读取、可生成、可检查、可评分、可保存报告”的基础要求。
+结论：Phase 1 & 2 的目标是在不破坏 heuristic baseline 且不引入复杂检索的前提下，打通最小的 LLM 运行链路并提供 per-sample debug trace。目前已达成，0 fallback 数据体现出解析器与后处理契约极佳的鲁棒性。接下来先验证 Phase 2.1 的 prompt 校准效果，再决定是否进入 Phase 3 多步骤 SkillFlow。
+
+### 2.6 Phase 2.1 Prompt 校准与后处理增强已实现并完成验证
+
+根据 `outputs/dev__20260521_090526_358__llm_glm4_9b__full/debug/trace.jsonl` 和 full dev 指标，当前 LLM backend 的主要问题不是工程链路，而是模型行为：
+
+- `response_strategy` 过度集中在 `light_acknowledgment`。
+- `risk_assessment` 自然但缺少 evaluator 可识别的风险标签短语。
+- `response_text` 在 `stay_neutral` / `avoid_sycophancy` 场景中出现过度夸奖。
+
+已完成代码层改动：
+
+```text
+humble_brag/prompts.py
+- 保留 llm_a_minimal_v1
+- 新增 llm_b_label_definition_v1
+- 新增 mechanism / strategy 标签定义
+- 新增 strategy selection rules
+- 新增 risk assessment 风险标签要求
+
+humble_brag/runner.py
+- 新增 --prompt-version 参数
+- LLM backend 根据 prompt_version 选择 prompt
+- trace 和 RES.md 继续记录实际 prompt_version
+
+humble_brag/contract.py
+- 扩展 overpraise 过滤词
+- 对 neutral_observation / stay_neutral / avoid_sycophancy 做更强反夸奖处理
+- 当 risk_assessment 缺少风险标签式短语时，按策略做通用风险补强
+```
+
+已运行验证命令：
+
+```bash
+python3 main.py --mode dev --backend heuristic --max-items 3
+python3 main.py --mode dev --backend llm --prompt-version llm_a_minimal_v1 --max-items 3
+python3 main.py --mode dev --backend llm --prompt-version llm_b_label_definition_v1 --max-items 10
+python3 main.py --mode dev --backend llm --prompt-version llm_b_label_definition_v1
+python3 -m compileall -q humble_brag main.py scripts/format_checker.py scripts/evaluate_dev.py
+```
+
+实际运行结果：
+
+| 运行后端 | 运行模式 | 输出目录 | 格式检查 | 代理分数 | Fallback |
+| --- | --- | --- | --- | --- | --- |
+| Heuristic | dev 3 条 | `outputs/dev__20260521_093306_421__heuristic_baseline__max3` | valid, 0 error | 49.565 | 0 |
+| LLM v1 | dev 3 条 | `outputs/dev__20260521_093726_803__llm_glm4_9b__max3` | valid, 0 error | 42.255 | 1 |
+| LLM v2 | dev 10 条 | `outputs/dev__20260521_093848_197__llm_glm4_9b__max10` | valid, 0 error | 47.003 | 0 |
+| LLM v2 | dev full 45 条 | `outputs/dev__20260521_094338_443__llm_glm4_9b__full` | valid, 0 error | 45.971 | 1 |
+
+full dev 对比：
+
+| 指标 | Phase 2 LLM v1 | Phase 2.1 LLM v2 | 变化 |
+| --- | ---: | ---: | ---: |
+| proxy_dev_score | 35.983 | 45.971 | +9.988 |
+| mechanism_accuracy | 0.2667 | 0.3778 | +0.1111 |
+| strategy_score | 0.4444 | 0.5889 | +0.1445 |
+| risk_label_f1 | 0.0481 | 0.2667 | +0.2186 |
+| response_reference_token_f1 | 0.2087 | 0.1684 | -0.0403 |
+
+LLM v2 full dev 策略分布：
+
+```text
+neutral_observation: 19
+light_acknowledgment: 20
+humor_tease: 5
+redirect: 1
+```
+
+补充观察：
+
+- 首次未升级权限运行时，LLM 调用被 sandbox 本地网络限制拦截，出现 100% fallback；升级权限后真实调用本地 `glm4:9b` 成功。
+- v2 已明显缓解 `light_acknowledgment` 塌缩问题，策略分布更健康。
+- v2 full dev 的 `risk_label_f1` 明显高于 v1，但仍低于 heuristic baseline。
+- v2 full dev 分数高于 Phase 2 LLM v1，但仍低于 heuristic baseline 的 49.223。
+
+### 2.7 Phase 2.2 Static Memory Prompt Integration 已实现并完成验证
+
+已新增固定任务知识模块：
+
+```text
+humble_brag/static_memory.py
+- STATIC_MEMORY_VERSION = "STATIC_MEMORY_V1"
+- STATIC_MEMORY_V1 包含固定任务知识：
+  - strategy selection principles
+  - risk label guidance
+  - anti-sycophancy rules
+  - mechanism 判断原则
+  - platform / relationship style rules
+```
+
+已完成代码层改动：
+
+```text
+humble_brag/prompts.py
+- 新增 llm_c_static_memory_v1
+- 新增 build_static_memory_prompt_v1
+- build_prompt 支持 static memory prompt
+- 保留 llm_a_minimal_v1 和 llm_b_label_definition_v1
+
+humble_brag/runner.py
+- 根据 prompt_version 设置 memory_version
+- trace.jsonl 每条记录 memory_version
+- run_manifest.json 记录 memory_version
+- RES.md Summary 记录 memory_version
+```
+
+本阶段没有引入 dynamic retrieval、RAG、few-shot、`data/Bragging_data.json` 检索或 dev gold 推理规则。
+
+已运行验证命令：
+
+```bash
+python3 main.py --mode dev --backend heuristic --max-items 3
+python3 main.py --mode dev --backend llm --prompt-version llm_b_label_definition_v1 --max-items 3
+python3 main.py --mode dev --backend llm --prompt-version llm_c_static_memory_v1 --max-items 10
+python3 main.py --mode dev --backend llm --prompt-version llm_c_static_memory_v1
+python3 -m compileall -q humble_brag main.py scripts/format_checker.py scripts/evaluate_dev.py
+```
+
+实际运行结果：
+
+| 运行后端 | 运行模式 | 输出目录 | 格式检查 | 代理分数 | Fallback |
+| --- | --- | --- | --- | --- | --- |
+| Heuristic | dev 3 条 | `outputs/dev__20260521_102959_688__heuristic_baseline__max3` | valid, 0 error | 49.565 | 0 |
+| LLM v2 | dev 3 条 | `outputs/dev__20260521_103200_974__llm_glm4_9b__max3` | valid, 0 error | 36.031 | 0 |
+| LLM v3 static memory | dev 10 条 | `outputs/dev__20260521_103344_882__llm_glm4_9b__max10` | valid, 0 error | 58.004 | 0 |
+| LLM v3 static memory | dev full 45 条 | `outputs/dev__20260521_103942_363__llm_glm4_9b__full` | valid, 0 error | 50.881 | 0 |
+
+full dev 对比：
+
+| 指标 | Heuristic | LLM v2 | LLM v3 Static Memory |
+| --- | ---: | ---: | ---: |
+| proxy_dev_score | 49.223 | 45.971 | 50.881 |
+| mechanism_accuracy | 0.2667 | 0.3778 | 0.4222 |
+| strategy_score | 0.6333 | 0.5889 | 0.5889 |
+| risk_label_f1 | 0.5785 | 0.2667 | 0.4600 |
+| response_reference_token_f1 | 0.1324 | 0.1684 | 0.1491 |
+
+LLM v3 full dev 策略分布：
+
+```text
+neutral_observation: 31
+light_acknowledgment: 9
+humor_tease: 5
+```
+
+补充观察：
+
+- `llm_c_static_memory_v1` full dev 0 fallback、0 parse failure、0 invalid label。
+- `debug/trace.jsonl` 45 条均记录 `memory_version = STATIC_MEMORY_V1`。
+- `RES.md` Summary 正确记录 `memory_version`。
+- 过度夸奖词命中数为 0。
+- static memory 已超过 heuristic full dev，但这仍是 public dev proxy，需要继续做 hidden-test 泛化风险控制。
 
 ## 3. 现有代码状态
 
@@ -142,12 +297,15 @@ full dev 指标：
 
 ## 5. 下一步重点
 
-Phase 0 和 Phase 1 已完成。下一步工作重心是 Phase 2 Debug Trace 和 Phase 3 SkillFlow：
+Phase 0、Phase 1、Phase 2、Phase 2.1、Phase 2.2 已完成。
 
-1. 为每条样本保存 trace，记录机制、策略、风险、回复和后处理动作。
-2. 把 heuristic baseline 拆成可替换的 SkillFlow 接口。
-3. 用同一套评测命令比较 baseline 与 SkillFlow。
-4. 再考虑 few-shot / Meta-String retrieval。
+下一步工作重心：
+
+1. 基于 `outputs/dev__20260521_103942_363__llm_glm4_9b__full/debug/trace.jsonl` 做错误分析。
+2. 重点分析 strategy_score 仍低于 heuristic 的原因。
+3. 不直接上 dynamic RAG / few-shot；static memory 已有效，下一步若继续增强，应进入 Phase 3 SkillFlow。
+4. 保留 heuristic 作为 fallback，`llm_c_static_memory_v1` 可作为当前最佳 LLM 分支。
+5. 在继续调高 public dev 前，需要做过拟合风险检查和 stress cases。
 
 ## 6. 风险
 
@@ -165,9 +323,10 @@ Phase 0 和 Phase 1 已完成。下一步工作重心是 Phase 2 Debug Trace 和
 official contract first
 -> runnable baseline
 -> trace and reports
+-> prompt calibration / contract postprocess
 -> SkillFlow
 -> retrieval / memory
 -> final freeze
 ```
 
-当前已经完成前两步，下一步应补 trace 和 SkillFlow。
+当前 trace 已补齐，Phase 2.2 static memory 已验证且超过 heuristic public dev proxy。下一步应基于 trace 做错误分析和过拟合风险检查，再决定是否进入 SkillFlow。
