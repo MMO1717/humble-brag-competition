@@ -262,15 +262,74 @@ mechanism
 - 有 no-memory vs active-memory 对比。
 - 有过拟合风险说明。
 
-## 当前下一步
+## Phase 6：Candidate Freeze and Submission Readiness (已完成 - 2026-05-21)
 
-现在最应该做的是先运行 Phase 2.1 验收命令，确认 prompt v2 和 contract postprocess 是否改善 LLM backend：
+目标：停止继续堆复杂功能，把当前最强候选整理成可复现、可解释、可提交前审计的稳定版本。
 
-```text
-heuristic smoke
--> llm_a_minimal_v1 smoke
--> llm_b_label_definition_v1 max10
--> llm_b_label_definition_v1 full dev
+任务：
+
+- [x] 1. 创建 `FINAL_CANDIDATE_FREEZE.md`，冻结最终候选配置。
+- [x] 2. 创建 `OVERFIT_RISK_AUDIT.md`，检查 dev gold、episode_id 规则、candidate memory、test mode 依赖等风险。
+- [x] 3. 创建 `TRACE_SANITY_REPORT.md`，审计最佳 run 的 SkillFlow trace。
+- [x] 4. 创建 `FINAL_READINESS_REPORT.md`，汇总 dev ablation、test dry run 和提交建议。
+- [x] 5. 运行 compileall 编译检查。
+- [x] 6. 运行 dev ablation：heuristic、static memory prompt、SkillFlow no-memory、SkillFlow active-memory。
+- [x] 7. 按用户要求只做 45 条 test dry run，不生成完整 409 条 test submission。
+
+完成记录：
+
+| Run | 输出目录 | 关键配置 | 格式 | 代理分数 |
+| --- | --- | --- | --- | ---: |
+| Heuristic reference | `outputs/dev__20260521_194048_706__heuristic_baseline__full` | heuristic | valid | 49.223 |
+| Static memory prompt | `outputs/dev__20260521_200217_548__llm_glm4_9b__full` | `llm_c_static_memory_v1` | valid | 49.573 |
+| SkillFlow no memory | `outputs/dev__20260521_201215_813__llm_glm4_9b_skillflow__full` | `--use-skillflow --memory-mode no_memory` | valid | 68.111 |
+| SkillFlow active memory | `outputs/dev__20260521_212356_012__llm_glm4_9b_skillflow__full` | `--use-skillflow --use-agent-memory --memory-mode active` | valid | 68.100 |
+| Frozen source run | `outputs/dev__20260521_190335_066__llm_glm4_9b_skillflow__full` | `--use-skillflow --use-fewshot --use-agent-memory --memory-mode active` | valid | 68.780 |
+
+Test dry run：
+
+| Run | 输出目录 | 配置 | 格式 | 行数 |
+| --- | --- | --- | --- | ---: |
+| no-fewshot test dry run | `outputs/test__20260521_213329_881__llm_glm4_9b_skillflow__max45` | active memory, no few-shot | valid | 45 |
+| frozen-candidate test dry run | `outputs/test__20260521_214225_439__llm_glm4_9b_skillflow__max45` | active memory + few-shot | valid | 45 |
+
+Phase 6 结论：
+
+- 当前最强候选是 `skillflow_v1_fewshot_active_empty_memory`。
+- 最强 run 的 active memory 实际为空，`memory_used_count=0`。
+- candidate memory 仍处于 candidate 状态，不允许进入 final chain。
+- 因为最强 run 使用 few-shot，而本轮 no-fewshot ablation 分数略低，最终完整 test submission 前建议再做一次 few-shot full dev 复现。
+
+### Phase 6.1：Frozen Candidate Dev/Test 45 Validation (已完成 - 2026-05-21)
+
+本轮只执行最终候选配置的 45 条验证，不修改核心代码，不 promote candidate memory，不跑完整 409 条 test。
+
+执行命令：
+
+```bash
+python3 -m compileall -q humble_brag main.py scripts/format_checker.py scripts/evaluate_dev.py
+
+OPENAI_BASE_URL=http://localhost:11434/v1 \
+OPENAI_API_KEY=ollama \
+OPENAI_MODEL=glm4:9b \
+python3 main.py --mode dev --backend llm --use-skillflow --use-fewshot --use-agent-memory --memory-mode active
+
+OPENAI_BASE_URL=http://localhost:11434/v1 \
+OPENAI_API_KEY=ollama \
+OPENAI_MODEL=glm4:9b \
+python3 main.py --mode test --backend llm --use-skillflow --use-fewshot --use-agent-memory --memory-mode active --max-items 45
 ```
 
-如果 Phase 2.1 指标有效，再进入 Phase 3 SkillFlow。暂时不要直接实现复杂 RAG、memory 或自反思回滚。
+完成记录：
+
+| Run | 输出目录 | 格式 | Fallback | Memory used | 代理分数 |
+| --- | --- | --- | ---: | ---: | ---: |
+| frozen dev-45 | `outputs/dev__20260521_221741_731__llm_glm4_9b_skillflow__full` | valid | 0 | 0 | 69.007 |
+| frozen test-45 | `outputs/test__20260521_222905_096__llm_glm4_9b_skillflow__max45` | valid | 0 | 0 | not run |
+
+补充说明：
+
+- active memory path 启用，但 active memory 为空，`memory_used_count=0`。
+- candidate memory 没有 promote，也没有进入 `memory_mode=active` 推理链。
+- 本轮 dev 后离线 error analysis 追加了 candidate memory 条目，但这些条目仍为 candidate 状态。
+- 当前电脑资源限制下，完整 409 条 test 留到最终提交前再跑。

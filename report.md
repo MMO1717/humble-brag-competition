@@ -297,15 +297,132 @@ humor_tease: 5
 
 ## 5. 下一步重点
 
-Phase 0、Phase 1、Phase 2、Phase 2.1、Phase 2.2 已完成。
+Phase 0、Phase 1、Phase 2、Phase 2.1、Phase 2.2 和 Phase 6 冻结审计已完成。
+
+### 5.1 Phase 6 冻结审计完成记录
+
+新增文档：
+
+```text
+FINAL_CANDIDATE_FREEZE.md
+OVERFIT_RISK_AUDIT.md
+TRACE_SANITY_REPORT.md
+FINAL_READINESS_REPORT.md
+```
+
+当前冻结候选：
+
+```text
+candidate_name: skillflow_v1_fewshot_active_empty_memory
+source_run_id: dev__20260521_190335_066__llm_glm4_9b_skillflow__full
+source_output_dir: outputs/dev__20260521_190335_066__llm_glm4_9b_skillflow__full
+```
+
+source run 核心指标：
+
+| 指标 | 数值 |
+| --- | ---: |
+| proxy_dev_score | 68.780 |
+| mechanism_accuracy | 0.7556 |
+| strategy_score | 0.7111 |
+| risk_label_f1 | 0.7296 |
+| response_reference_token_f1 | 0.1532 |
+| fallback_count | 0 |
+| parse_failure_count | 0 |
+| invalid_label_count | 0 |
+
+Phase 6 dev ablation：
+
+| Run | 输出目录 | 关键配置 | 格式 | 代理分数 |
+| --- | --- | --- | --- | ---: |
+| Heuristic reference | `outputs/dev__20260521_194048_706__heuristic_baseline__full` | heuristic | valid | 49.223 |
+| Static memory prompt | `outputs/dev__20260521_200217_548__llm_glm4_9b__full` | `llm_c_static_memory_v1` | valid | 49.573 |
+| SkillFlow no memory | `outputs/dev__20260521_201215_813__llm_glm4_9b_skillflow__full` | no memory, no few-shot | valid | 68.111 |
+| SkillFlow active memory | `outputs/dev__20260521_212356_012__llm_glm4_9b_skillflow__full` | active memory, no few-shot | valid | 68.100 |
+
+Test dry run：
+
+| Run | 输出目录 | 配置 | 格式 | 行数 |
+| --- | --- | --- | --- | ---: |
+| no-fewshot test dry run | `outputs/test__20260521_213329_881__llm_glm4_9b_skillflow__max45` | active memory, no few-shot | valid | 45 |
+| frozen-candidate test dry run | `outputs/test__20260521_214225_439__llm_glm4_9b_skillflow__max45` | active memory + few-shot | valid | 45 |
+
+审计结论：
+
+- 最强 source run 使用 `--use-fewshot --use-agent-memory --memory-mode active`。
+- active memory 实际为空，trace 中 `memory_used_count=0`。
+- candidate memory 没有进入 final chain，不能直接使用 `active_plus_candidate`。
+- `dev_gold.jsonl` 只用于 dev evaluation / error analysis，没有进入 test inference。
+- 按用户要求，本轮没有跑完整 409 条 test submission，只完成 45 条 dry run。
 
 下一步工作重心：
 
-1. 基于 `outputs/dev__20260521_103942_363__llm_glm4_9b__full/debug/trace.jsonl` 做错误分析。
-2. 重点分析 strategy_score 仍低于 heuristic 的原因。
-3. 不直接上 dynamic RAG / few-shot；static memory 已有效，下一步若继续增强，应进入 Phase 3 SkillFlow。
-4. 保留 heuristic 作为 fallback，`llm_c_static_memory_v1` 可作为当前最佳 LLM 分支。
-5. 在继续调高 public dev 前，需要做过拟合风险检查和 stress cases。
+1. 如果准备正式生成完整 test submission，先用 frozen command 再复现一次 full dev。
+2. 如果 full dev 仍接近 `68.780` 且 format valid，再运行完整 test，不带 `--max-items`。
+3. 不要 promote candidate memory，不要使用 `active_plus_candidate`。
+4. 不把 public dev proxy score 当 hidden-test 保证。
+
+### 5.2 Frozen Candidate Dev/Test 45 Validation (2026-05-21)
+
+本轮按最终候选配置做 45 条验证，没有修改核心代码，没有调 prompt、SkillFlow、few-shot 或 strategy rules，没有 promote candidate memory，也没有跑完整 409 条 test。
+
+运行命令：
+
+```bash
+python3 -m compileall -q humble_brag main.py scripts/format_checker.py scripts/evaluate_dev.py
+
+OPENAI_BASE_URL=http://localhost:11434/v1 \
+OPENAI_API_KEY=ollama \
+OPENAI_MODEL=glm4:9b \
+python3 main.py --mode dev --backend llm --use-skillflow --use-fewshot --use-agent-memory --memory-mode active
+
+OPENAI_BASE_URL=http://localhost:11434/v1 \
+OPENAI_API_KEY=ollama \
+OPENAI_MODEL=glm4:9b \
+python3 main.py --mode test --backend llm --use-skillflow --use-fewshot --use-agent-memory --memory-mode active --max-items 45
+```
+
+新输出目录：
+
+```text
+outputs/dev__20260521_221741_731__llm_glm4_9b_skillflow__full
+outputs/test__20260521_222905_096__llm_glm4_9b_skillflow__max45
+```
+
+dev-45 核心指标：
+
+| 指标 | 数值 |
+| --- | ---: |
+| proxy_dev_score | 69.007 |
+| mechanism_accuracy | 0.7556 |
+| strategy_score | 0.7111 |
+| risk_label_f1 | 0.7296 |
+| response_reference_token_f1 | 0.1684 |
+| fallback_count | 0 |
+| parse_failure_count | 0 |
+| invalid_label_count | 0 |
+| skillflow_fallback_count | 0 |
+| memory_used_count | 0 |
+
+test-45 dry run：
+
+| 指标 | 数值 |
+| --- | ---: |
+| format valid | true |
+| output rows | 45 |
+| fallback_count | 0 |
+| parse_failure_count | 0 |
+| invalid_label_count | 0 |
+| skillflow_fallback_count | 0 |
+| memory_used_count | 0 |
+
+结论：
+
+- 本轮 dev-45 分数 `69.007`，接近并略高于历史最好 `68.780`。
+- test-45 成功生成 submission 并通过格式检查。
+- active memory path 被启用，但 active memory 为空，trace 中没有 memory injection。
+- candidate memory 仍未 promote。运行 dev 后离线 error analysis 追加了 candidate memory 到 candidate 文件，但不属于 final inference chain。
+- 当前电脑资源限制下，完整 test 留到最终提交前再跑。
 
 ## 6. 风险
 
