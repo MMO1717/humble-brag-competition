@@ -81,6 +81,11 @@ def write_res(run_dir: Path, manifest: dict[str, Any], format_report: dict[str, 
         f"- strategy_rules: `{manifest.get('strategy_rules', 'none')}`",
         f"- strategy_rule_applied_count: `{manifest.get('strategy_rule_applied_count', 0)}`",
         f"- skillflow_fallback_count: `{manifest.get('skillflow_fallback_count', 0)}`",
+        f"- use_agent_memory: `{manifest.get('use_agent_memory', False)}`",
+        f"- memory_mode: `{manifest.get('memory_mode', 'no_memory')}`",
+        f"- active_memory_count: `{manifest.get('active_memory_count', 0)}`",
+        f"- candidate_memory_count: `{manifest.get('candidate_memory_count', 0)}`",
+        f"- memory_used_count: `{manifest.get('memory_used_count', 0)}`",
         f"- trace path: {trace_path}",
     ]
 
@@ -122,6 +127,9 @@ def run_pipeline(
     use_skillflow: bool = False,
     use_fewshot: bool = False,
     fewshot_k: int = 3,
+    use_agent_memory: bool = False,
+    memory_mode: str = "no_memory",
+    memory_top_k: int = 3,
 ) -> Path:
     if backend == "llm" and not use_skillflow and prompt_version not in SUPPORTED_PROMPT_VERSIONS:
         supported = ", ".join(sorted(SUPPORTED_PROMPT_VERSIONS))
@@ -167,6 +175,23 @@ def run_pipeline(
             include_fields=True,
         )
 
+    # Memory 初始化
+    memory_dir = PROJECT_ROOT / "agent_memory"
+    memory_store = None
+    memory_retriever = None
+    memory_used_count = 0
+    if use_agent_memory and backend == "llm":
+        from .memory_loader import load_memory_store
+        from .memory_retriever import MemoryRetriever
+        memory_store = load_memory_store(memory_dir, static_enabled=True)
+        memory_retriever = MemoryRetriever(
+            store=memory_store,
+            mode=memory_mode,
+            top_k_per_skill=memory_top_k,
+            max_chars_per_skill=1800,
+            target_skills=["MechanismSkill", "StrategySkill", "ResponseSkill"],
+        )
+
     # SkillFlow 初始化
     skillflow = None
     skillflow_context = {}
@@ -177,9 +202,10 @@ def run_pipeline(
             "llm_client": llm_client,
             "temperature": 0.3,
             "max_tokens": 256,
-            "wiki": {},
+            "wiki": memory_store.static_notes if memory_store else {},
             "debug_skill_trace": True,
             "fewshot_retriever": fewshot_retriever,
+            "memory_retriever": memory_retriever,
         }
 
     for row in rows:
@@ -225,11 +251,14 @@ def run_pipeline(
                     output_rows.append(baseline_row)
                     skillflow_fallback_count += 1
 
+                if memory_retriever:
+                    memory_used_count += sum(len(items) for items in state.get("memory_used", {}).values())
+
                 trace_rows.append({
                     "episode_id": episode_id,
                     "backend": "llm_skillflow",
                     "prompt_version": "skillflow",
-                    "memory_version": "n/a",
+                    "memory_version": memory_mode if memory_retriever else "n/a",
                     "use_skillflow": True,
                     "input": row,
                     "bragging_mechanism": state.get("bragging_mechanism"),
@@ -432,6 +461,13 @@ def run_pipeline(
         "use_skillflow": use_skillflow,
         "use_fewshot": use_fewshot,
         "fewshot_k": fewshot_k if use_fewshot else 0,
+        "use_agent_memory": use_agent_memory,
+        "memory_mode": memory_mode if use_agent_memory else "no_memory",
+        "memory_top_k_per_skill": memory_top_k if use_agent_memory else 0,
+        "active_memory_count": len(memory_store.active_items) if memory_store else 0,
+        "candidate_memory_count": len(memory_store.candidate_items) if memory_store else 0,
+        "static_memory_count": len(memory_store.static_items) if memory_store else 0,
+        "memory_used_count": memory_used_count,
         "strategy_rules": strategy_rules,
         "strategy_rule_applied_count": strategy_rule_applied_count,
         "skillflow_fallback_count": skillflow_fallback_count,
@@ -450,6 +486,28 @@ def run_pipeline(
         "format_returncode": format_report["returncode"],
         "dev_eval_returncode": None if dev_report is None else dev_report["returncode"],
     }
+    # Error analysis (dev mode only)
+    error_analysis_report = None
+    if mode == "dev" and llm_client:
+        try:
+            from .error_analyzer import run_dev_error_analysis
+            error_analysis_report = run_dev_error_analysis(
+                llm_client=llm_client,
+                run_dir=run_dir,
+                dev_input_path=format_input_path,
+                dev_gold_path=PUBLIC_DATA_DIR / "dev_gold.jsonl",
+                submission_path=submission_path,
+                trace_path=trace_path,
+                memory_dir=memory_dir if use_agent_memory else None,
+                top_k=10,
+                use_llm=True,
+                generate_candidates=use_agent_memory,
+            )
+            manifest["error_analysis"] = error_analysis_report
+            write_json(run_dir / "run_manifest.json", manifest)
+        except Exception as exc:
+            print(f"[warning] error analysis failed: {exc}")
+
     write_json(run_dir / "run_manifest.json", manifest)
     write_res(run_dir, manifest, format_report, dev_report)
 
@@ -496,6 +554,24 @@ def parse_args() -> argparse.Namespace:
         default=3,
         help="Number of few-shot examples to retrieve (default: 3)."
     )
+    parser.add_argument(
+        "--use-agent-memory",
+        action="store_true",
+        default=False,
+        help="Enable Agent Memory retrieval from agent_memory/ directory."
+    )
+    parser.add_argument(
+        "--memory-mode",
+        choices=["no_memory", "static_only", "active", "active_plus_candidate"],
+        default="no_memory",
+        help="Memory injection strategy. Default: no_memory (static wiki always loaded separately)."
+    )
+    parser.add_argument(
+        "--memory-top-k",
+        type=int,
+        default=3,
+        help="Max memory items to inject per skill (default: 3)."
+    )
     return parser.parse_args()
 
 
@@ -511,6 +587,9 @@ def main() -> None:
         use_skillflow=args.use_skillflow,
         use_fewshot=args.use_fewshot,
         fewshot_k=args.fewshot_k,
+        use_agent_memory=args.use_agent_memory,
+        memory_mode=args.memory_mode,
+        memory_top_k=args.memory_top_k,
     )
     print(run_dir)
 
