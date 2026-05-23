@@ -333,3 +333,41 @@ python3 main.py --mode test --backend llm --use-skillflow --use-fewshot --use-ag
 - candidate memory 没有 promote，也没有进入 `memory_mode=active` 推理链。
 - 本轮 dev 后离线 error analysis 追加了 candidate memory 条目，但这些条目仍为 candidate 状态。
 - 当前电脑资源限制下，完整 409 条 test 留到最终提交前再跑。
+
+### Phase 6.2：Active Memory Ablation Phase 1 (已完成 - 2026-05-22)
+
+目标：在不修改 SkillFlow、prompt、few-shot、strategy_rules 或核心 pipeline 的前提下，从 candidate memory 中人工筛选 1-2 条低风险 memory，短暂 promote 到 active memory 并跑 dev-45 ablation。
+
+任务：
+
+- [x] 1. 读取 candidate memory、candidate review、agent_memory README、freeze/readiness 文档。
+- [x] 2. 对 6 条 candidate memory 做人工筛选，并记录 promote/reject 理由。
+- [x] 3. 仅 promote 最新 frozen run 生成的两条唯一 memory 做 ablation。
+- [x] 4. 运行 compileall 编译检查。
+- [x] 5. 运行 active memory dev-45 ablation。
+- [x] 6. 检查 `RES.md`、`run_manifest.json`、`dev_eval_report.json`、`format_report.json`、`debug/trace.jsonl`。
+- [x] 7. 因分数下降，清空 `agent_memory/active/memory.jsonl`，回到 frozen baseline。
+
+完成记录：
+
+| Run | 输出目录 | 格式 | Fallback | Memory used | 代理分数 |
+| --- | --- | --- | ---: | ---: | ---: |
+| frozen baseline | `outputs/dev__20260521_221741_731__llm_glm4_9b_skillflow__full` | valid | 0 | 0 | 69.007 |
+| active memory ablation p1 | `outputs/dev__20260522_011033_370__llm_glm4_9b_skillflow__full` | valid | 0 | 90 | 68.849 |
+
+核心指标：
+
+| 指标 | Baseline | Ablation | 变化 |
+| --- | ---: | ---: | ---: |
+| proxy_dev_score | 69.007 | 68.849 | -0.158 |
+| mechanism_accuracy | 0.7556 | 0.7556 | +0.0000 |
+| strategy_score | 0.7111 | 0.7111 | +0.0000 |
+| risk_label_f1 | 0.7296 | 0.7296 | +0.0000 |
+| response_reference_token_f1 | 0.1684 | 0.1579 | -0.0105 |
+
+结论：
+
+- 两条 active memory 都被检索到，每条各命中 45 次，说明 memory path 可用。
+- 但分数低于 frozen baseline，收益不足。
+- 已清空 active memory；最终候选仍使用 `skillflow_v1_fewshot_active_empty_memory`。
+- 本轮没有跑完整 test，也没有使用 `active_plus_candidate`。

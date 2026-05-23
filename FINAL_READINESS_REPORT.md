@@ -145,3 +145,45 @@ Residual risk:
 
 - Full 409-row test was intentionally not run in this validation round.
 - Public dev proxy still does not guarantee hidden Core + Bloom performance.
+
+## 2026-05-22 Active Memory Ablation Phase 1
+
+This was a memory experiment line, not a replacement for the frozen submission candidate. It did not modify SkillFlow, prompts, few-shot, strategy rules, contract postprocess, evaluator, or format checker. It did not run full test and did not use `active_plus_candidate`.
+
+### Promoted For Ablation Only
+
+```text
+mem_20260521_222103_dev_20260521_221741_731_llm_glm4_001
+mem_20260521_222103_dev_20260521_221741_731_llm_glm4_002
+```
+
+The promoted rows were cleaned before insertion into active memory: `status=active`, short `content_en`, abstract conditions, no episode_id, no dev gold, and no reference answer.
+
+### Run Result
+
+| Run | Output dir | Format | Fallback | Parse failure | Invalid label | SkillFlow fallback | Memory used | Proxy score |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| frozen baseline | `outputs/dev__20260521_221741_731__llm_glm4_9b_skillflow__full` | valid | 0 | 0 | 0 | 0 | 0 | 69.007 |
+| active memory ablation p1 | `outputs/dev__20260522_011033_370__llm_glm4_9b_skillflow__full` | valid | 0 | 0 | 0 | 0 | 90 | 68.849 |
+
+Metric deltas:
+
+| Metric | Frozen baseline | Active memory ablation | Delta |
+| --- | ---: | ---: | ---: |
+| mechanism_accuracy | 0.7556 | 0.7556 | +0.0000 |
+| strategy_score | 0.7111 | 0.7111 | +0.0000 |
+| risk_label_f1 | 0.7296 | 0.7296 | +0.0000 |
+| response_reference_token_f1 | 0.1684 | 0.1579 | -0.0105 |
+
+### Readiness Decision
+
+Do not replace the frozen baseline with active memory.
+
+Reason:
+
+- Both memory items were retrieved on all 45 rows, proving the active memory path works.
+- They did not improve mechanism, strategy, or risk metrics.
+- They reduced response reference token F1 and lowered proxy score.
+- The broad empty conditions made retrieval too non-selective.
+
+`agent_memory/active/memory.jsonl` has been cleared after the failed ablation. The final readiness recommendation remains the previous frozen candidate: `skillflow_v1_fewshot_active_empty_memory`.

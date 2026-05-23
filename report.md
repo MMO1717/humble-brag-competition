@@ -424,6 +424,65 @@ test-45 dry run：
 - candidate memory 仍未 promote。运行 dev 后离线 error analysis 追加了 candidate memory 到 candidate 文件，但不属于 final inference chain。
 - 当前电脑资源限制下，完整 test 留到最终提交前再跑。
 
+### 5.3 Active Memory Ablation Phase 1 (2026-05-22)
+
+本轮是 memory 实验线，不是最终提交链。执行期间没有修改 SkillFlow、prompt、few-shot、strategy_rules、contract、evaluator 或 format checker；没有运行完整 test；没有使用 `active_plus_candidate`。
+
+Promote for ablation 的 memory：
+
+```text
+mem_20260521_222103_dev_20260521_221741_731_llm_glm4_001
+mem_20260521_222103_dev_20260521_221741_731_llm_glm4_002
+```
+
+运行命令：
+
+```bash
+python3 -m compileall -q humble_brag main.py scripts/format_checker.py scripts/evaluate_dev.py
+
+OPENAI_BASE_URL=http://localhost:11434/v1 \
+OPENAI_API_KEY=ollama \
+OPENAI_MODEL=glm4:9b \
+python3 main.py --mode dev --backend llm --use-skillflow --use-fewshot --use-agent-memory --memory-mode active
+```
+
+新输出目录：
+
+```text
+outputs/dev__20260522_011033_370__llm_glm4_9b_skillflow__full
+```
+
+指标对比：
+
+| 指标 | Frozen baseline | Active memory ablation | 变化 |
+| --- | ---: | ---: | ---: |
+| proxy_dev_score | 69.007 | 68.849 | -0.158 |
+| mechanism_accuracy | 0.7556 | 0.7556 | +0.0000 |
+| strategy_score | 0.7111 | 0.7111 | +0.0000 |
+| risk_label_f1 | 0.7296 | 0.7296 | +0.0000 |
+| response_reference_token_f1 | 0.1684 | 0.1579 | -0.0105 |
+| fallback_count | 0 | 0 | 0 |
+| parse_failure_count | 0 | 0 | 0 |
+| invalid_label_count | 0 | 0 | 0 |
+| skillflow_fallback_count | 0 | 0 | 0 |
+| memory_used_count | 0 | 90 | +90 |
+
+Trace 观察：
+
+- 45/45 行完整通过 SkillFlow，无 fallback、parse failure、invalid label 或 CoT 泄露。
+- promoted mechanism memory 在 `MechanismSkill` 中命中 45 次。
+- promoted strategy memory 在 `StrategySkill` 中命中 45 次。
+- strategy 分布和 mechanism 分布与 frozen baseline 完全相同。
+- 主要变化集中在 `response_text`，共有 30 行 response_text 与 baseline 不同。
+
+结论：
+
+- Active memory path 可用，但本轮 memory 不值得保留。
+- 分数从 `69.007` 降到 `68.849`，核心分类指标没有提升。
+- 两条 memory 的 conditions 过宽，导致所有样本都命中，选择性不足。
+- 已清空 `agent_memory/active/memory.jsonl`，最终候选仍回到原 frozen baseline。
+- 运行中由 offline error analysis 自动追加的 candidate memory 已恢复到运行前快照；candidate memory 没有 promote，也没有进入 final chain。
+
 ## 6. 风险
 
 - 当前 `data/Bragging_data.json` 与官方 JSONL 输入格式已确认不一致，不能直接作为 submission 输入。
