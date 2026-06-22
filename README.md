@@ -50,7 +50,7 @@ RUN_MODE = "smoke"  # smoke / dev / test
 USE_MEMORY = True
 USE_FEWSHOT = True
 FEWSHOT_RETRIEVAL_MODE = "jaccard"  # jaccard / embedding / hybrid
-MEMORY_ROUTER_MODE = "function"     # baseline / function / llm_rerank
+MEMORY_ROUTER_MODE = "llm_rerank"   # baseline / function / llm_rerank
 
 RUN_ERROR_ANALYSIS = True
 SAVE_ERROR_MEMORY = False
@@ -61,7 +61,7 @@ USE_GENERATED_MEMORY = False
 - `USE_MEMORY`：加载 `memory/memory.jsonl`。
 - `USE_FEWSHOT`：从 `data/train.jsonl` 检索回复示例。
 - `FEWSHOT_RETRIEVAL_MODE`：选择 Jaccard、embedding 或混合检索。
-- `MEMORY_ROUTER_MODE`：选择 Memory 注入方式。当前默认使用 `function`，只给 ResponseSkill 注入与已确认机制/策略兼容的 memory。
+- `MEMORY_ROUTER_MODE`：选择 Memory 注入方式。当前默认使用 `llm_rerank`，先用函数式路由收窄候选，再让 LLM 只从候选 memory ID 中重排选择。
 - `RUN_ERROR_ANALYSIS`：完整 dev 后生成错误分析。
 - `SAVE_ERROR_MEMORY`：把错误分析候选写入 `memory/generated.jsonl`。
 - `USE_GENERATED_MEMORY`：推理时加载人工确认后的生成记忆。
@@ -188,10 +188,11 @@ Few-shot 使用 500 条 train 数据。当前默认仅为 `ResponseSkill` 检索
 |---|---|---:|---:|---:|---:|---:|
 | `dev_20260622_001031_gemma3_12b` | function | 79.733 | 0.9778 | 0.8889 | 0.7237 | 0.2098 |
 | `dev_20260622_040201_gemma3_12b` | llm_rerank | 79.465 | 0.9778 | 0.8889 | 0.7237 | 0.1920 |
+| `dev_20260622_153413_gemma3_12b` | llm_rerank | 81.402 | 0.9778 | 0.9556 | 0.7548 | 0.1907 |
 
-结论：`llm_rerank` 增加了 LLM 调用和 prompt 成本，但没有超过函数式路由，因此默认保留 `MEMORY_ROUTER_MODE = "function"`。
+结论：在加入最新 StrategySkill/RiskSkill 规则修正后，`llm_rerank` 的完整 dev 分数超过此前 function-router 最优结果，因此当前默认保留 `MEMORY_ROUTER_MODE = "llm_rerank"`。
 
-最新本地规则改动进一步优化了 `StrategySkill` 首选策略选择和 `RiskSkill` false positive 控制；单测已通过。该改动的完整 45 条 LLM 结果需要重新运行 dev 后再更新。
+最新本地规则改动进一步优化了 `StrategySkill` 首选策略选择和 `RiskSkill` false positive 控制；完整 45 条 LLM dev 已验证。
 
 ## 输出
 
