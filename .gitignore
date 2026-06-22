@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.cache/
+
+outputs/*
+!outputs/.gitkeep
+memory/generated.jsonl
