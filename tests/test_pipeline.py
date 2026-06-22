@@ -372,6 +372,69 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertEqual(result["strategy"], "ask_followup")
 
+    def test_public_acquaintance_comparison_prefers_neutral_observation(self) -> None:
+        result = choose_strategy_with_trace(
+            {
+                "platform": "public_social_media",
+                "relationship": "acquaintance",
+                "interaction_goal": "respond_politely_without_overpraising",
+                "speaker_post": "Some posts make me thankful for my own partner.",
+            },
+            "comparison_superiority",
+            {},
+        )
+        self.assertEqual(result["strategy"], "neutral_observation")
+
+    def test_forum_stranger_comparison_without_moralizing_stays_neutral(self) -> None:
+        result = choose_strategy_with_trace(
+            {
+                "platform": "community_forum",
+                "relationship": "stranger",
+                "interaction_goal": "respond_without_moralizing",
+                "speaker_post": "I am parrying way more than most people in my scene.",
+            },
+            "comparison_superiority",
+            {},
+        )
+        self.assertEqual(result["strategy"], "neutral_observation")
+
+    def test_supportive_personal_access_story_uses_followup(self) -> None:
+        result = choose_strategy_with_trace(
+            {
+                "platform": "group_chat",
+                "relationship": "close_friend",
+                "interaction_goal": "be_supportive_without_overpraising",
+                "speaker_post": 'Bobby Lopez sang "Happy Birthday" to me.',
+            },
+            "scarcity_flex",
+            {},
+        )
+        self.assertEqual(result["strategy"], "ask_followup")
+
+    def test_risk_avoid_sycophancy_followup_does_not_overflag_sycophancy(self) -> None:
+        labels = infer_contextual_risk_labels(
+            {
+                "platform": "direct_message",
+                "relationship": "acquaintance",
+                "interaction_goal": "avoid_sycophancy",
+            },
+            "ask_followup",
+            "understated_flex",
+        )
+        self.assertNotIn("sycophancy", labels)
+
+    def test_risk_supportive_close_visibility_followup_marks_strategy_mismatch(self) -> None:
+        labels = infer_contextual_risk_labels(
+            {
+                "platform": "direct_message",
+                "relationship": "close_friend",
+                "interaction_goal": "be_supportive_without_overpraising",
+            },
+            "ask_followup",
+            "understated_flex",
+        )
+        self.assertIn("strategy_inconsistency", labels)
+
     def test_mechanism_prompt_uses_only_post_and_all_labels(self) -> None:
         messages = build_mechanism_prompt(
             {

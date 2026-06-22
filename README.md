@@ -7,7 +7,7 @@ BRAG-Pipeline 是一个面向社交语境理解与回复生成的受控 Agent �
 ## 目录
 
 ```text
-BRAG-Pipeline_new/
+BRAG-Pipeline/
 ├── data/                 # train、dev 和 test 数据
 ├── docs/                 # 数据集与标签说明
 ├── memory/
@@ -33,9 +33,9 @@ pip install -r requirements.txt
 复制 `.env.example` 为 `.env`，填写兼容 OpenAI 接口的服务信息：
 
 ```env
-OPENAI_BASE_URL=https://your-api.example.com/v1
-OPENAI_API_KEY=your-api-key
-OPENAI_MODEL=your-model-name
+OPENAI_BASE_URL=http://localhost:11434/v1
+OPENAI_API_KEY=ollama
+OPENAI_MODEL=gemma3:12b
 ```
 
 模型名只在 `.env` 中设置，不需要修改代码。
@@ -50,6 +50,7 @@ RUN_MODE = "smoke"  # smoke / dev / test
 USE_MEMORY = True
 USE_FEWSHOT = True
 FEWSHOT_RETRIEVAL_MODE = "jaccard"  # jaccard / embedding / hybrid
+MEMORY_ROUTER_MODE = "function"     # baseline / function / llm_rerank
 
 RUN_ERROR_ANALYSIS = True
 SAVE_ERROR_MEMORY = False
@@ -60,6 +61,7 @@ USE_GENERATED_MEMORY = False
 - `USE_MEMORY`：加载 `memory/memory.jsonl`。
 - `USE_FEWSHOT`：从 `data/train.jsonl` 检索回复示例。
 - `FEWSHOT_RETRIEVAL_MODE`：选择 Jaccard、embedding 或混合检索。
+- `MEMORY_ROUTER_MODE`：选择 Memory 注入方式。当前默认使用 `function`，只给 ResponseSkill 注入与已确认机制/策略兼容的 memory。
 - `RUN_ERROR_ANALYSIS`：完整 dev 后生成错误分析。
 - `SAVE_ERROR_MEMORY`：把错误分析候选写入 `memory/generated.jsonl`。
 - `USE_GENERATED_MEMORY`：推理时加载人工确认后的生成记忆。
@@ -106,10 +108,10 @@ RUN_MODE = "dev"
 
 ### 最终 Test
 
-先在 `.env` 中设置最终模型：
+先在 `.env` 中设置最终模型。当前本地验证使用：
 
 ```env
-OPENAI_MODEL=Qwen/Qwen3-14B
+OPENAI_MODEL=gemma3:12b
 ```
 
 然后在 `config.py` 中设置：
@@ -154,7 +156,7 @@ RewriterSkill：仅在首次校验失败时修复
 
 机制分类只读取 `speaker_post`，避免场景字段改变原文语义。策略和风险采用确定性规则，语言理解与回复表达由模型完成。每个样本都会保存可追踪的 Skill 执行记录。
 
-详细设计与模型对比见 [技术报告.md](技术报告.md)。
+详细设计与当前结果见 [技术报告.md](技术报告.md)。
 
 ## Memory 与 Few-shot
 
@@ -168,9 +170,28 @@ RewriterSkill：仅在首次校验失败时修复
 - `response_style_card`
 - `anti_pattern`
 
-每条记忆包含目标 Skill、目标标签、正负条件、置信度和优先级。检索时先执行类型、标签和条件过滤，再计算相关性。
+每条记忆包含目标 Skill、目标标签、正负条件、置信度、优先级和状态。检索时先跳过非 active/approved 的候选，再执行类型、标签和条件过滤。
+
+当前默认的函数式动态路由只影响 `ResponseSkill`：
+
+- `scenario_policy`、`strategy_policy`、`response_style_card` 必须兼容当前 `response_strategy`。
+- `anti_pattern` 只在条件命中当前策略、机制、关系或风险语境时注入。
+- `MechanismSkill` 保守使用机制知识卡，不按预测机制做硬过滤，避免自我确认错误。
 
 Few-shot 使用 500 条 train 数据。当前默认仅为 `ResponseSkill` 检索 2 个示例；机制和策略不使用近邻投票，避免训练集近邻噪声覆盖分类规则和策略矩阵。
+
+## 当前结果
+
+当前有效完整 dev 结果来自 Gemma3 12B、45 条公开 dev：
+
+| 运行 | Memory 路由 | 代理总分 | 机制准确率 | 策略得分 | 风险 F1 | 回复 F1 |
+|---|---|---:|---:|---:|---:|---:|
+| `dev_20260622_001031_gemma3_12b` | function | 79.733 | 0.9778 | 0.8889 | 0.7237 | 0.2098 |
+| `dev_20260622_040201_gemma3_12b` | llm_rerank | 79.465 | 0.9778 | 0.8889 | 0.7237 | 0.1920 |
+
+结论：`llm_rerank` 增加了 LLM 调用和 prompt 成本，但没有超过函数式路由，因此默认保留 `MEMORY_ROUTER_MODE = "function"`。
+
+最新本地规则改动进一步优化了 `StrategySkill` 首选策略选择和 `RiskSkill` false positive 控制；单测已通过。该改动的完整 45 条 LLM 结果需要重新运行 dev 后再更新。
 
 ## 输出
 

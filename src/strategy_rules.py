@@ -217,6 +217,8 @@ def choose_strategy_with_trace(
 
     if goal == "respond_without_moralizing":
         if mechanism == "comparison_superiority":
+            if platform == "community_forum" and relationship == "stranger":
+                return finish("neutral_observation", "non_moralizing_forum_stranger_comparison", platform, relationship)
             return finish("redirect", "non_moralizing_comparison", mechanism)
         if _has_public_social_value(platform, relationship, goal, mechanism):
             return finish(
@@ -234,6 +236,8 @@ def choose_strategy_with_trace(
     if goal == "deescalate_awkwardness":
         if mechanism == "comparison_superiority":
             return finish("redirect", "deescalate_comparison", mechanism)
+        if platform == "group_chat" and relationship == "acquaintance" and mechanism == "faux_modesty":
+            return finish("neutral_observation", "deescalate_acquaintance_modesty", platform, relationship)
         if platform in {"group_chat", "community_forum"} and mechanism in {"understated_flex", "self_aware_brag"}:
             return finish("humor_tease", "deescalate_peer_playful", platform, mechanism)
         if warm_private and (playful or mechanism in {"understated_flex", "faux_modesty"}):
@@ -242,6 +246,23 @@ def choose_strategy_with_trace(
         return finish(strategy, "deescalate_default", platform, relationship)
 
     if goal in {"be_supportive", "be_supportive_without_overpraising"}:
+        if (
+            platform in {"group_chat", "direct_message"}
+            and relationship in {"close_friend", "acquaintance"}
+            and (
+                mechanism == "scarcity_flex"
+                or _contains_any(
+                    speaker_post,
+                    (
+                        "happy birthday",
+                        "i was there",
+                        "live off this story",
+                        "private",
+                    ),
+                )
+            )
+        ):
+            return finish("ask_followup", "supportive_personal_access_story", platform, relationship)
         if mechanism == "comparison_superiority":
             if platform == "direct_message" and relationship == "close_friend":
                 return finish("humor_tease", "supportive_close_comparison", relationship)
@@ -281,7 +302,16 @@ def choose_strategy_with_trace(
 
     if goal == "respond_politely_without_overpraising":
         if mechanism == "comparison_superiority":
+            if platform == "public_social_media" and relationship == "acquaintance":
+                return finish("neutral_observation", "polite_public_acquaintance_comparison", platform, relationship)
             return finish("redirect", "polite_comparison", mechanism)
+        if (
+            platform == "public_social_media"
+            and relationship == "online_peer"
+            and mechanism == "understated_flex"
+            and _contains_any(speaker_post, VISIBILITY_CUES)
+        ):
+            return finish("neutral_observation", "polite_public_visibility_flex", platform, relationship)
         if (
             platform == "public_social_media"
             and relationship == "acquaintance"

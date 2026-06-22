@@ -780,10 +780,13 @@ def infer_contextual_risk_labels(
         labels.add("context_insensitivity")
 
     if (
-        "avoid_sycophancy" in goal
+        (
+            "avoid_sycophancy" in goal
+            and strategy in {"neutral_observation", "light_acknowledgment", "validate"}
+        )
         or (
             mechanism == "understated_flex"
-            and strategy in {"validate", "neutral_observation", "ask_followup"}
+            and strategy in {"validate", "neutral_observation"}
             and goal in {
                 "be_supportive_without_overpraising",
                 "respond_politely_without_overpraising",
@@ -799,6 +802,11 @@ def infer_contextual_risk_labels(
     ) or (
         strategy == "validate"
         and goal == "be_supportive_without_overpraising"
+        and mechanism == "understated_flex"
+    ) or (
+        strategy == "ask_followup"
+        and goal == "be_supportive_without_overpraising"
+        and relationship == "close_friend"
         and mechanism == "understated_flex"
     ):
         labels.add("strategy_inconsistency")
