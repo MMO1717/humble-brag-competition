@@ -51,6 +51,8 @@ USE_MEMORY = True
 USE_FEWSHOT = True
 FEWSHOT_RETRIEVAL_MODE = "jaccard"  # jaccard / embedding / hybrid
 MEMORY_ROUTER_MODE = "llm_rerank"   # baseline / function / llm_rerank
+USE_RESPONSE_CANDIDATE_RERANK = False
+USE_UNDERSTANDING_TEMPLATE_REPAIR = True
 
 RUN_ERROR_ANALYSIS = True
 SAVE_ERROR_MEMORY = False
@@ -62,6 +64,8 @@ USE_GENERATED_MEMORY = False
 - `USE_FEWSHOT`：从 `data/train.jsonl` 检索回复示例。
 - `FEWSHOT_RETRIEVAL_MODE`：选择 Jaccard、embedding 或混合检索。
 - `MEMORY_ROUTER_MODE`：选择 Memory 注入方式。当前默认使用 `llm_rerank`，先用函数式路由收窄候选，再让 LLM 只从候选 memory ID 中重排选择。
+- `USE_RESPONSE_CANDIDATE_RERANK`：实验性 Response 多候选重排。离线对照未超过当前最佳 dev 分数，因此默认关闭。
+- `USE_UNDERSTANDING_TEMPLATE_REPAIR`：对开放文本理解字段做轻量模板修复。当前默认只修 `desired_feedback`，保留 LLM 的 `speaker_intention`。
 - `RUN_ERROR_ANALYSIS`：完整 dev 后生成错误分析。
 - `SAVE_ERROR_MEMORY`：把错误分析候选写入 `memory/generated.jsonl`。
 - `USE_GENERATED_MEMORY`：推理时加载人工确认后的生成记忆。
@@ -114,16 +118,16 @@ RUN_MODE = "dev"
 OPENAI_MODEL=gemma3:12b
 ```
 
-然后在 `config.py` 中设置：
+推荐使用最终 test 专用入口，脚本会临时应用当前推荐配置，不需要手动改 `config.py`：
 
-```python
-RUN_MODE = "test"
+```bash
+python scripts/run_final_test.py --dry-run
 ```
 
 执行：
 
 ```bash
-python main.py
+python scripts/run_final_test.py
 ```
 
 流程读取全部 409 条 test，执行格式检查，不运行 dev 评分和错误分析。可提交文件为：
@@ -180,6 +184,10 @@ RewriterSkill：仅在首次校验失败时修复
 
 Few-shot 使用 500 条 train 数据。当前默认仅为 `ResponseSkill` 检索 2 个示例；机制和策略不使用近邻投票，避免训练集近邻噪声覆盖分类规则和策略矩阵。
 
+`RiskSkill` 会额外生成内部 `risk_control_plan`，供 `ResponseSkill` 控制语气和 Bloom 风险。该字段不会写入最终 `submission.jsonl`，最终提交仍只有七个规定字段。
+
+`UnderstandingSkill` 使用 LLM 生成意图与期望反馈后，会在策略确定后用模板修复 `desired_feedback`。基于当前最佳 run 的离线对照，`desired_feedback` token F1 从 `0.1511` 提升到 `0.2112`，不改变 proxy 总分公式中的有效项。
+
 ## 当前结果
 
 当前有效完整 dev 结果来自 Gemma3 12B、45 条公开 dev：
@@ -193,6 +201,8 @@ Few-shot 使用 500 条 train 数据。当前默认仅为 `ResponseSkill` 检索
 结论：在加入最新 StrategySkill/RiskSkill 规则修正后，`llm_rerank` 的完整 dev 分数超过此前 function-router 最优结果，因此当前默认保留 `MEMORY_ROUTER_MODE = "llm_rerank"`。
 
 最新本地规则改动进一步优化了 `StrategySkill` 首选策略选择和 `RiskSkill` false positive 控制；完整 45 条 LLM dev 已验证。
+
+规划执行完成度记录在 `reports/md_plan_completion.md`，运行对比记录在 `reports/run_comparison.md`。
 
 ## 输出
 

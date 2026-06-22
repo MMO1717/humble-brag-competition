@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import config
+from scripts.run_final_test import apply_final_test_config, final_test_config_summary
 from src.debug_logger import DebugLogger
 from src.error_analyzer import _build_generated_memories
 from src.fewshot import FewShotRetriever
@@ -32,8 +33,10 @@ from src.social_rubric import judge_row
 from src.skills.mechanism_skill import MechanismSkill
 from src.skills.response_risk_review_skill import ResponseRiskReviewSkill
 from src.skills.response_skill import ResponseSkill
+from src.skills.risk_skill import build_risk_control_plan
 from src.skillflow import SkillFlow
 from src.strategy_rules import choose_strategy_with_trace
+from src.understanding_templates import build_understanding_templates, repair_understanding_fields
 
 
 class PipelineTests(unittest.TestCase):
@@ -48,6 +51,35 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(dev["run_dev_eval"])
         self.assertIsNone(test["max_items"])
         self.assertFalse(test["run_dev_eval"])
+
+    def test_final_test_config_helper_sets_recommended_flags(self) -> None:
+        cfg = SimpleNamespace(
+            RUN_MODE="dev",
+            TEST_INPUT_PATH=Path("data/test_input.jsonl"),
+            INPUT_PATH=Path("data/dev_input.jsonl"),
+            MAX_ITEMS=45,
+            RUN_DEV_EVAL=True,
+            EFFECTIVE_ERROR_ANALYSIS=True,
+            EFFECTIVE_SAVE_ERROR_MEMORY=True,
+            RUN_OFFICIAL_FORMAT_CHECK=False,
+            USE_MEMORY=False,
+            USE_FEWSHOT=False,
+            FEWSHOT_RETRIEVAL_MODE="embedding",
+            MEMORY_ROUTER_MODE="function",
+            USE_RESPONSE_CANDIDATE_RERANK=True,
+            USE_UNDERSTANDING_TEMPLATE_REPAIR=False,
+            UNDERSTANDING_TEMPLATE_REPAIR_FIELDS=(),
+            SAVE_ERROR_MEMORY=True,
+            USE_GENERATED_MEMORY=True,
+        )
+        apply_final_test_config(cfg)
+        summary = final_test_config_summary(cfg)
+        self.assertEqual(summary["RUN_MODE"], "test")
+        self.assertEqual(summary["MEMORY_ROUTER_MODE"], "llm_rerank")
+        self.assertFalse(summary["USE_RESPONSE_CANDIDATE_RERANK"])
+        self.assertTrue(summary["USE_UNDERSTANDING_TEMPLATE_REPAIR"])
+        self.assertFalse(summary["RUN_DEV_EVAL"])
+        self.assertFalse(summary["EFFECTIVE_ERROR_ANALYSIS"])
 
     def test_rate_limiter_prints_trigger_and_wait_seconds(self) -> None:
         limiter = RateLimiter(
@@ -1188,6 +1220,105 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(result["fallback_used"])
         self.assertIn("response_fallback_judgment", result)
 
+    def test_response_candidate_rerank_replaces_risky_response(self) -> None:
+        class RiskyLLM:
+            def call_chat(self, messages, temperature, max_tokens, **kwargs):
+                return "Amazing, you are obviously better than everyone lol", "content"
+
+        state = {
+            "episode_id": "rerank-risky",
+            "input_row": {
+                "episode_id": "rerank-risky",
+                "speaker_post": "I finished the client report two days early.",
+                "platform": "public_social_media",
+                "relationship": "stranger",
+                "agent_role": "peer",
+                "interaction_goal": "be_supportive",
+            },
+            "response_strategy": "validate",
+            "bragging_mechanism": "achievement_drop",
+            "speaker_intention": "They are sharing an achievement.",
+            "desired_feedback": "They want measured acknowledgment.",
+            "risk_assessment": "The main risk is misrecognition.",
+            "raw_outputs": {},
+            "fewshot_examples": {},
+            "memory_used": {},
+            "skill_errors": [],
+        }
+        result = ResponseSkill().run(
+            state,
+            {
+                "llm_client": RiskyLLM(),
+                "cfg": SimpleNamespace(
+                    TEMPERATURE=0.0,
+                    MAX_TOKENS=64,
+                    USE_CONCRETE_FALLBACK=True,
+                    USE_RESPONSE_CANDIDATE_RERANK=True,
+                    RESPONSE_CANDIDATE_K=5,
+                    RESPONSE_CANDIDATE_MIN_DELTA=0.01,
+                ),
+                "fewshot_retriever": None,
+                "memory_retriever": None,
+                "debug_logger": None,
+            },
+        )
+        self.assertNotIn("Amazing", result["response_text"])
+        self.assertNotEqual(
+            result["response_candidate_rerank"]["selected_source"],
+            "llm",
+        )
+
+    def test_response_candidate_rerank_keeps_close_current_response(self) -> None:
+        class GoodLLM:
+            def call_chat(self, messages, temperature, max_tokens, **kwargs):
+                return "Finishing early gives the team useful scheduling context.", "content"
+
+        state = {
+            "episode_id": "rerank-good",
+            "input_row": {
+                "episode_id": "rerank-good",
+                "speaker_post": "I finished the client report two days early.",
+                "platform": "workplace_channel",
+                "relationship": "coworker",
+                "agent_role": "colleague",
+                "interaction_goal": "stay professional",
+            },
+            "response_strategy": "neutral_observation",
+            "bragging_mechanism": "achievement_drop",
+            "speaker_intention": "They are sharing an achievement.",
+            "desired_feedback": "They want measured acknowledgment.",
+            "risk_assessment": "The main risk is misrecognition.",
+            "raw_outputs": {},
+            "fewshot_examples": {},
+            "memory_used": {},
+            "skill_errors": [],
+        }
+        result = ResponseSkill().run(
+            state,
+            {
+                "llm_client": GoodLLM(),
+                "cfg": SimpleNamespace(
+                    TEMPERATURE=0.0,
+                    MAX_TOKENS=64,
+                    USE_CONCRETE_FALLBACK=True,
+                    USE_RESPONSE_CANDIDATE_RERANK=True,
+                    RESPONSE_CANDIDATE_K=5,
+                    RESPONSE_CANDIDATE_MIN_DELTA=0.5,
+                ),
+                "fewshot_retriever": None,
+                "memory_retriever": None,
+                "debug_logger": None,
+            },
+        )
+        self.assertEqual(
+            result["response_text"],
+            "Finishing early gives the team useful scheduling context.",
+        )
+        self.assertEqual(
+            result["response_candidate_rerank"]["selected_source"],
+            "llm",
+        )
+
     def test_output_builder_replaces_invalid_risk_text(self) -> None:
         output = build_output_row(
             {"episode_id": "x"},
@@ -1325,6 +1456,66 @@ class PipelineTests(unittest.TestCase):
         summary = evaluate_output_rows(input_rows, output_rows)
         self.assertEqual(summary["row_count"], 1)
         self.assertGreater(summary["overall_score"], 0.5)
+
+    def test_risk_control_plan_adds_internal_bloom_guards(self) -> None:
+        plan = build_risk_control_plan(
+            {
+                "platform": "public_social_media",
+                "relationship": "stranger",
+                "interaction_goal": "avoid_sycophancy",
+            },
+            "redirect",
+            "comparison_superiority",
+            {"misrecognition"},
+        )
+        self.assertIn("sycophancy", plan["avoid"])
+        self.assertIn("context_insensitivity", plan["avoid"])
+        self.assertIn("do not amplify the comparison", plan["must_not"])
+
+    def test_understanding_template_repair_can_target_feedback_only(self) -> None:
+        state = {
+            "bragging_mechanism": "understated_flex",
+            "response_strategy": "neutral_observation",
+            "speaker_intention": "Keep this LLM intention.",
+            "desired_feedback": "Replace this feedback.",
+        }
+        repair_understanding_fields(
+            state,
+            {
+                "speaker_post": "My score is especially impressive on a screen.",
+                "platform": "academic_forum",
+                "relationship": "online_peer",
+                "interaction_goal": "stay_neutral",
+            },
+            {"desired_feedback"},
+        )
+        self.assertEqual(state["speaker_intention"], "Keep this LLM intention.")
+        self.assertIn("measured acknowledgment", state["desired_feedback"])
+
+    def test_understanding_templates_follow_strategy(self) -> None:
+        templates = build_understanding_templates(
+            {"speaker_post": "I optimized the whole game build."},
+            "self_aware_brag",
+            "humor_tease",
+        )
+        self.assertIn("joke", templates["desired_feedback"])
+
+    def test_output_builder_does_not_emit_risk_control_plan(self) -> None:
+        output = build_output_row(
+            {"episode_id": "x"},
+            {
+                "bragging_mechanism": "achievement_drop",
+                "speaker_intention": "The speaker is sharing an achievement.",
+                "desired_feedback": "They want measured acknowledgment.",
+                "risk_labels": ["misrecognition"],
+                "risk_assessment": "The main risk is misrecognition.",
+                "risk_control_plan": {"avoid": ["sycophancy"]},
+                "response_strategy": "neutral_observation",
+                "response_text": "That gives the result some context.",
+            },
+        )
+        self.assertNotIn("risk_control_plan", output)
+        self.assertEqual(len(output), 7)
 
 
 if __name__ == "__main__":

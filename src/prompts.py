@@ -307,6 +307,7 @@ If the post is about gaming optimization or multitasking, a light gaming phrase 
         "speaker_intention": state.get("speaker_intention", ""),
         "desired_feedback": state.get("desired_feedback", ""),
         "risk_guidance": state.get("risk_assessment", ""),
+        "risk_control_plan": state.get("risk_control_plan", {}),
         "response_strategy": state.get("response_strategy", ""),
     }
 

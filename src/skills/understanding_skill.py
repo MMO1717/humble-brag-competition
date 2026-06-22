@@ -5,6 +5,7 @@ from typing import Any
 from ..postprocess import clean_field_text, parse_json_object
 from ..prompts import build_understanding_prompt
 from ..schemas import DEFAULT_DESIRED_FEEDBACK, DEFAULT_SPEAKER_INTENTION, MAX_WORDS
+from ..understanding_templates import repair_understanding_fields
 from .base import Skill
 
 
@@ -61,14 +62,35 @@ class UnderstandingSkill(Skill):
                 flush=True,
             )
 
-        state["speaker_intention"] = clean_field_text(
+        speaker_intention = clean_field_text(
             parsed.get("speaker_intention"),
             DEFAULT_SPEAKER_INTENTION,
             MAX_WORDS["speaker_intention"],
         )
-        state["desired_feedback"] = clean_field_text(
+        desired_feedback = clean_field_text(
             parsed.get("desired_feedback"),
             DEFAULT_DESIRED_FEEDBACK,
             MAX_WORDS["desired_feedback"],
         )
+        template_repair = (
+            getattr(cfg, "USE_UNDERSTANDING_TEMPLATE_REPAIR", False) if cfg else False
+        )
+        if template_repair:
+            fields = set(
+                getattr(
+                    cfg,
+                    "UNDERSTANDING_TEMPLATE_REPAIR_FIELDS",
+                    ("desired_feedback",),
+                )
+            )
+            state["speaker_intention"] = speaker_intention
+            state["desired_feedback"] = desired_feedback
+            repair_understanding_fields(state, row, fields)
+            speaker_intention = state["speaker_intention"]
+            desired_feedback = state["desired_feedback"]
+        else:
+            state["understanding_template_repair"] = {"enabled": False}
+
+        state["speaker_intention"] = speaker_intention
+        state["desired_feedback"] = desired_feedback
         return state

@@ -45,6 +45,7 @@ class SkillFlow:
             "risk_labels_before_response": [],
             "risk_labels_after_response": [],
             "risk_assessment": None,
+            "risk_control_plan": {},
             "response_strategy": None,
             "response_text": None,
             "raw_outputs": {},
