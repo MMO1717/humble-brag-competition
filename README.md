@@ -136,6 +136,17 @@ python scripts/run_final_test.py
 outputs/<run_id>/submission.jsonl
 ```
 
+### Nvidia 机器运行完整 Test
+
+给外部机器或同学跑完整 409 条 test 时，直接使用最终 test 入口：
+
+```bash
+python scripts/run_final_test.py --dry-run
+python scripts/run_final_test.py
+```
+
+Nvidia/Ollama 环境说明见 [docs/RUN_FULL_TEST_NVIDIA.md](docs/RUN_FULL_TEST_NVIDIA.md)。
+
 ## 运行流程
 
 ```text
@@ -186,7 +197,7 @@ Few-shot 使用 500 条 train 数据。当前默认仅为 `ResponseSkill` 检索
 
 `RiskSkill` 会额外生成内部 `risk_control_plan`，供 `ResponseSkill` 控制语气和 Bloom 风险。该字段不会写入最终 `submission.jsonl`，最终提交仍只有七个规定字段。
 
-`UnderstandingSkill` 使用 LLM 生成意图与期望反馈后，会在策略确定后用模板修复 `desired_feedback`。基于当前最佳 run 的离线对照，`desired_feedback` token F1 从 `0.1511` 提升到 `0.2112`，不改变 proxy 总分公式中的有效项。
+`UnderstandingSkill` 使用 LLM 生成意图与期望反馈后，会在策略确定后用动态主题模板修复 `desired_feedback`。当前最佳完整 dev 中，`desired_feedback` token F1 达到 `0.2372`，同时避免早期固定模板过度重复。
 
 ## 当前结果
 
@@ -197,6 +208,7 @@ Few-shot 使用 500 条 train 数据。当前默认仅为 `ResponseSkill` 检索
 | `dev_20260622_001031_gemma3_12b` | function | 79.733 | 0.9778 | 0.8889 | 0.7237 | 0.2098 |
 | `dev_20260622_040201_gemma3_12b` | llm_rerank | 79.465 | 0.9778 | 0.8889 | 0.7237 | 0.1920 |
 | `dev_20260622_153413_gemma3_12b` | llm_rerank | 81.402 | 0.9778 | 0.9556 | 0.7548 | 0.1907 |
+| `dev_20260622_220425_gemma3_12b` | llm_rerank | 81.775 | 0.9778 | 0.9556 | 0.7548 | 0.2156 |
 
 结论：在加入最新 StrategySkill/RiskSkill 规则修正后，`llm_rerank` 的完整 dev 分数超过此前 function-router 最优结果，因此当前默认保留 `MEMORY_ROUTER_MODE = "llm_rerank"`。
 

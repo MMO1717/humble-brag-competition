@@ -1500,6 +1500,44 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertIn("joke", templates["desired_feedback"])
 
+    def test_understanding_templates_vary_feedback_by_theme(self) -> None:
+        screen_templates = build_understanding_templates(
+            {"speaker_post": "My score is especially impressive on a screen."},
+            "understated_flex",
+            "neutral_observation",
+        )
+        birthday_templates = build_understanding_templates(
+            {"speaker_post": "Turning a year older was better with a birthday song."},
+            "understated_flex",
+            "neutral_observation",
+        )
+        self.assertNotEqual(
+            screen_templates["desired_feedback"],
+            birthday_templates["desired_feedback"],
+        )
+        self.assertIn("measured acknowledgment", screen_templates["desired_feedback"])
+        self.assertIn("birthday surprise", birthday_templates["desired_feedback"])
+
+    def test_understanding_theme_prefers_domain_over_generic_game_or_family(self) -> None:
+        sports = build_understanding_templates(
+            {"speaker_post": "My stats in 2 games: 17 tackles and 1 interception."},
+            "achievement_drop",
+            "light_acknowledgment",
+        )
+        dog = build_understanding_templates(
+            {
+                "speaker_post": (
+                    "I never baby talk to my dogs. My pug Ralph shocks adults "
+                    "at family gatherings."
+                )
+            },
+            "understated_flex",
+            "humor_tease",
+        )
+        self.assertIn("sports performance", sports["desired_feedback"])
+        self.assertNotIn("gaming joke", sports["desired_feedback"])
+        self.assertIn("dog story", dog["desired_feedback"])
+
     def test_output_builder_does_not_emit_risk_control_plan(self) -> None:
         output = build_output_row(
             {"episode_id": "x"},
